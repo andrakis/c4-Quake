@@ -24,7 +24,7 @@ QUAKE_HDRS  := $(wildcard $(QUAKE)/*.h games/quake/c4inc/*.h) \
                $(wildcard src/c4ix/libc/include/*.h src/c4ix/libc/include/sys/*.h) \
                src/c4ix/include/display.h src/c4ix/include/window.h src/c4ix/include/window.c \
                libjs/guest/gui.h libjs/guest/gui.c libjs/guest/snd.h libjs/guest/snd.c
-QUAKE_CC    := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -fno-builtin -c -conforming \
+QUAKE_CC    := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -mfpu -fno-builtin -c -conforming \
                -D C4QUAKE -I games/quake/c4inc -I src/c4ix/libc/include -I src/c4ix/include \
                -I libjs/guest -I $(QUAKE)
 quake-objs: $(QUAKE_UNITS:%=.quake/%.c4o) $(QUAKE_C4:%=.quake/%.c4o) $(QUAKE_PLAT:%=.quake/plat/%.c4o)
@@ -79,6 +79,11 @@ test-quake: quake-data quake-host c4bb-images test-libc-bare
 	@for w in bare dos c4ix; do grep '^timedemo' .quake_t/$$w.out | cmp -s .quake_t/host.txt - \
 	   || { echo "test-quake: $$w's frames differ:"; tail -5 .quake_t/$$w.out; exit 1; }; done
 	@rm -rf .quake_t
+	@# built -mfpu: with no FPU it stops at once and says why, bare and under C4IX
+	@cd src/c4bb/images/games && timeout 300 node ../../../../libjs/cli.js --no-fpu -m 128 -d . quake.c4r -nosound -nocdaudio 2>&1 | grep -q "needs an FPU" \
+	   || { echo "test-quake: bare, with no FPU, it did not say why"; exit 1; }
+	@printf 'quake -nosound -nocdaudio\nexit\n' | timeout 300 node libjs/cli.js --no-fpu -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r 2>&1 | grep -q "needs an FPU" \
+	   || { echo "test-quake: under C4IX, with no FPU, it did not say why"; exit 1; }
 	@echo "test-quake: OK"
 PHONY += test-quake
 
