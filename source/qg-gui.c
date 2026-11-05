@@ -2,7 +2,7 @@
 // where the desktop gives the display way until the game ends (qg-c4ix.c), and
 // the bare machine and C4DOS (qg-bare.c).
 //
-// Quake's 320x240 frames go out 8-bit, as GUI_BLIT8 with their palette, and the
+// Quake's 320x200 frames go out 8-bit, as GUI_BLIT8 with their palette, and the
 // host scales them to 640x480. Keys come from the display's event ring as Quake's
 // own key codes; the mouse is locked to the display from the first click until Esc
 // (GUI_PTR_LOCK) and its motion is relative. A timedemo runs without the display:
