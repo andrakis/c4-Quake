@@ -9,7 +9,9 @@
 void qg_sum_frame (void *pixels);
 void qg_sum_palette (unsigned char *palette);
 
-void QG_Init (void) {}
+// snd_null.c defines volume and does not register it, as qg-snd.c does: default.cfg
+// sets it, and a line more on the console is another frame and different pixels.
+void QG_Init (void) { Cvar_RegisterVariable (&volume); }
 void QG_Quit (void) {}
 int QG_GetKey (int *down, int *key) { return 0; }
 void QG_GetMouseMove (int *x, int *y) { *x = 0; *y = 0; }
