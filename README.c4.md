@@ -1,0 +1,71 @@
+# games/quake — Quake on C4IX, C4DOS and the bare machine
+
+id Software's Quake (1996), as quakegeneric has it (GPL WinQuake, software
+rendered, no assembly), compiled by c4lc and played on libjs's whole display,
+with its sound effects on libjs's sound card. The shareware episode ships with
+it. It is played from the keyboard and the mouse.
+
+Unlike every game before it, Quake's arithmetic is floating point: it is what an
+inline-math flag for c4lc would be for.
+
+## Where it runs
+
+| where | how | platform |
+|---|---|---|
+| C4IX, the whole display | `quake`; the desktop gives way until it ends | `qg-gui.c`, `qg-c4ix.c` |
+| C4IX, a window | `quake -window` in a Terminal; also when a program that does not give way has the display | `qg-gui.c`, `qg-c4ix.c` |
+| C4DOS | `QUAKE` at the prompt, in 128 MB | `qg-gui.c`, `qg-bare.c` |
+| a grin window, under C4DOS | as Doom's | `qg-gui.c`, `qg-bare.c` |
+| the bare machine | `quake.c4r` as the machine's image; the page's `?system=quake`, in 128 MB | `qg-gui.c`, `qg-bare.c` |
+
+Keys are Quake's own. The mouse locks to the display at the first click, until
+Esc; it looks (`+mlook`), as players now expect.
+
+## What is c4's here
+
+- `qg-sum.c`: the main loop, the clock, one `rand` for every build, the flat disks
+  (`fopen`), and a timedemo's frames checksummed (`-sum`).
+- `qg-gui.c`, `qg-c4ix.c`, `qg-bare.c`, `qg-host.c`: the platforms. 320x200, as the
+  original ran in VGA: `vid.aspect` says its pixels are not square, and the display
+  shows it 4:3. Frames go out 8-bit, as `GUI_BLIT8`.
+- `qg-snd.c`, in place of `snd_null.c`: eight channels of the card, which the host
+  mixes, so a sound costs a file to load and a few volumes, not a mix a frame. Two
+  are the level's ambience, two the loudest sounds the map places, four whatever
+  starts. Placed by `snd_dma.c`'s formula, about twenty times a second. The pak's
+  WAVs are 8-bit, 11025 Hz but for two; 20 have a `LIST` chunk whose length is past
+  their end, after their data.
+- `qg-jmp.c`: `setjmp` and `longjmp` on the VM, which has no way to set `bp` but
+  `LEV`: two of them in a row put every register back. A server's error abandons the
+  frame with it. Only as C allows it: the whole condition of an `if` or a `switch`, or
+  a comparison with a constant. `r = setjmp (b)` has `r`'s address on the stack
+  machine's stack across the call.
+- `common.h`: little-endian everywhere it runs, so `LittleLong` and the rest are no
+  calls at all (and c4lc has no pointer to a function returning a float).
+
+## The baseline
+
+Measured before any inline math (2026-11-05), demo1 at 320x240: 20.74 M VM
+instructions a frame on the bare machine, 21.3 M under C4IX. Under node on helios:
+115 s for its 979 frames bare, 145 s under C4IX, 234 s with the MMU. In the page, on
+CDP 9224 at 320x200: 3.9 fps with the MMU, 5.2 without.
+
+| by instructions | |
+|---|---|
+| game code | 64.9% |
+| soft float helpers | 26.5%, `__c4fp_hw` alone 10.46% in 57 copies |
+| `<ld16u>`, `<ld16s>`, `<st16>`, `<lsr>` | 3.5% |
+| libc (`trunc`, `ceil` ...) | 3.2% |
+| `long long` | 1.9% |
+
+`D_DrawSpans8` 18.7%, `R_DrawSurfaceBlock8_mip0` and `mip1` 15.3%, `D_DrawZSpans` 7.1%.
+By the wall, the MMU's user loop costs most (1.6x), and each FPU opcode leaves the
+interpreter's hot loop: about 15-17% of the wall for 1.5% of the instructions.
+
+## Testing
+
+- `make quake-data` takes id's `quake106.zip` from `$QUAKE_ZIP` or `data/MIRRORS`, by
+  its SHA-256, and takes `pak0.pak` out of it. It is never committed.
+- `make test-quake` plays demo3 as a timedemo, built by gcc and by c4lc, on the bare
+  machine, under C4DOS and inside C4IX: all must show the same frames, to the checksum
+  of every pixel and the palette.
+- `test-desktop-quake` in c4's `test-libjs`: Quake in a Terminal's window, in 64 MB.

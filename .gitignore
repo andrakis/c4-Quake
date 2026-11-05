@@ -36,3 +36,9 @@ cmake-build*
 
 # meson
 meson-build*
+
+# c4: the data is never committed (c4's games/README.md)
+data/*.zip
+data/*.pak
+data/resource.1
+data/unlh5

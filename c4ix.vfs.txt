@@ -1,0 +1,4 @@
+# Quake (games/quake): the game and id's shareware pak
+quake/:
+	quake.c4r: c4ix-quake.c4r
+	pak0.pak

@@ -34,6 +34,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdlib.h>
 #include <setjmp.h>
 
+#ifdef C4QUAKE
+// c4: the same numbers on every build, so that the frames can be compared
+// (qg-sum.c), and a date that does not change the image
+int qg_rand (void);
+#undef rand
+#define rand qg_rand
+// (qg-sum.c: its disks are flat)
+FILE *qg_fopen (char *path, char *mode);
+#undef fopen
+#define fopen qg_fopen
+#undef __TIME__
+#undef __DATE__
+#define __TIME__ "c4"
+#define __DATE__ "c4"
+#endif
+
 // Slart: For intptr_t, unlikely to be supported on all compilers
 #include <stddef.h>
 #include <stdint.h>

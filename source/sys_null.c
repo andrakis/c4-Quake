@@ -178,6 +178,13 @@ void Sys_Quit (void)
 	exit (0);
 }
 
+#ifdef C4QUAKE
+double qg_now (void);
+double Sys_FloatTime (void)
+{
+	return qg_now ();
+}
+#else
 double Sys_FloatTime (void)
 {
 	static double t;
@@ -186,6 +193,7 @@ double Sys_FloatTime (void)
 	
 	return t;
 }
+#endif
 
 char *Sys_ConsoleInput (void)
 {

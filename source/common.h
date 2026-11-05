@@ -87,12 +87,26 @@ void InsertLinkAfter (link_t *l, link_t *after);
 
 extern	qboolean		bigendien;
 
+#ifdef C4QUAKE
+// c4: little-endian everywhere it runs, so these need be no calls at all (and
+// c4lc has no pointer to a function returning a float)
+short	ShortSwap (short l);
+int	LongSwap (int l);
+float	FloatSwap (float f);
+#define BigShort(l)	ShortSwap (l)
+#define LittleShort(l)	(l)
+#define BigLong(l)	LongSwap (l)
+#define LittleLong(l)	(l)
+#define BigFloat(l)	FloatSwap (l)
+#define LittleFloat(l)	(l)
+#else
 extern	short	(*BigShort) (short l);
 extern	short	(*LittleShort) (short l);
 extern	int	(*BigLong) (int l);
 extern	int	(*LittleLong) (int l);
 extern	float	(*BigFloat) (float l);
 extern	float	(*LittleFloat) (float l);
+#endif
 
 //============================================================================
 

@@ -24,7 +24,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakekeys.h"
 
 #define QUAKEGENERIC_RES_X 320
+#ifdef C4QUAKE
+// as the original ran in VGA: 17% fewer pixels than 320x240, shown 4:3 (vid.aspect, vid_null.c)
+#define QUAKEGENERIC_RES_Y 200
+#else
 #define QUAKEGENERIC_RES_Y 240
+#endif
 
 #define QUAKEGENERIC_JOY_MAX_AXES 6
 #define QUAKEGENERIC_JOY_AXIS_X 0

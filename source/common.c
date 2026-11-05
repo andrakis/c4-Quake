@@ -433,12 +433,14 @@ float Q_atof (char *str)
 
 qboolean        bigendien;
 
+#ifndef C4QUAKE
 short   (*BigShort) (short l);
 short   (*LittleShort) (short l);
 int     (*BigLong) (int l);
 int     (*LittleLong) (int l);
 float   (*BigFloat) (float l);
 float   (*LittleFloat) (float l);
+#endif
 
 short   ShortSwap (short l)
 {
@@ -1129,6 +1131,7 @@ COM_Init
 */
 void COM_Init (char *basedir)
 {
+#ifndef C4QUAKE
 	byte    swaptest[2] = {1,0};
 
 // set the byte swapping variables in a portable manner 
@@ -1152,6 +1155,7 @@ void COM_Init (char *basedir)
 		BigFloat = FloatNoSwap;
 		LittleFloat = FloatSwap;
 	}
+#endif
 
 	Cvar_RegisterVariable (&registered);
 	Cvar_RegisterVariable (&cmdline);
