@@ -12,6 +12,7 @@ currently it can only compile for 32-bit architechtures.
 - [`quakegeneric_dos.c`](./source/quakegeneric_dos.c) - MS-DOS
 - [`quakegeneric_sdl2.c`](./source/quakegeneric_sdl2.c) - SDL2
 - [`quakegeneric_w32.c`](./source/quakegeneric_w32.c) - Win32
+- [`qg-gui.c`](./source/qg-gui.c), with [`qg-c4ix.c`](./source/qg-c4ix.c) or [`qg-bare.c`](./source/qg-bare.c) - [c4](https://github.com/andrakis/c4): C4IX, C4DOS and the bare machine ([`README.c4.md`](./README.c4.md))
 
 ## building
 
@@ -54,6 +55,22 @@ cd source/
 nmake makefile.win
 ```
 
+for c4 (C4IX, C4DOS and the bare machine), from a checkout of [c4](https://github.com/andrakis/c4), where this repository is the submodule `games/quake`:
+
+```
+git submodule update --init --checkout games/quake
+QUAKE_ZIP=/path/to/quake106.zip make quake-data
+make c4bb-images
+```
+
+`quake-data` takes `pak0.pak` out of id's shareware package, which is not in this repository; without `QUAKE_ZIP` it fetches the package from a mirror in [`data/MIRRORS`](./data/MIRRORS). `c4bb-images` builds every game whose source is present, and links this one for each target. `make test-quake` then holds the frames of all three to a gcc build's. Then, in C4IX, or at C4DOS's prompt with 128 MB:
+
+```
+quake
+```
+
+`quake -window` plays in the Terminal's window on C4IX's desktop. [`README.c4.md`](./README.c4.md) has the rest.
+
 ## platforms
 
 the following compilers have been tested to work with this source:
@@ -64,6 +81,7 @@ the following compilers have been tested to work with this source:
 - TinyCC
 - Open Watcom
 - MSVC
+- [c4lc](https://github.com/andrakis/c4)
 
 ## License
 
