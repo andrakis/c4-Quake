@@ -27,7 +27,16 @@ QUAKE_HDRS  := $(wildcard $(QUAKE)/*.h games/quake/c4inc/*.h) \
 QUAKE_CC    := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -mfpu -fno-builtin -c -conforming \
                -D C4QUAKE -I games/quake/c4inc -I src/c4ix/libc/include -I src/c4ix/include \
                -I libjs/guest -I $(QUAKE)
-quake-objs: $(QUAKE_UNITS:%=.quake/%.c4o) $(QUAKE_C4:%=.quake/%.c4o) $(QUAKE_PLAT:%=.quake/plat/%.c4o)
+# libc's math.c once more, for Quake alone: libc's own copy calls a helper for
+# every operation on a double, so that programs run without an FPU. Quake needs
+# one anyway. Being in .quake it is linked for both machines, ahead of C4IX's
+# libc, and the bare link leaves out libc-math.
+QUAKE_MATHCC := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -mfpu -fno-builtin -c \
+               -I src/c4ix/libc/include -I src/c4ix/libc
+quake-objs: $(QUAKE_UNITS:%=.quake/%.c4o) $(QUAKE_C4:%=.quake/%.c4o) $(QUAKE_PLAT:%=.quake/plat/%.c4o) .quake/libc-math-fpu.c4o
+.quake/libc-math-fpu.c4o: src/c4ix/libc/math.c $(wildcard src/c4ix/libc/*.h src/c4ix/libc/include/*.h) $(C4LC_LISP) .img_g | c4sp32
+	@mkdir -p .quake/plat
+	$(QUAKE_MATHCC) $< $@ > /dev/null
 .quake/%.c4o: $(QUAKE)/%.c $(QUAKE_HDRS) $(C4LC_LISP) .img_g | c4sp32
 	@mkdir -p .quake/plat
 	$(QUAKE_CC) $< $@ > /dev/null

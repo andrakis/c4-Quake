@@ -13,7 +13,8 @@ c4ix)
 bare)
     if [ -f .quake/qg-sum.c4o ]; then
         item quake
-        ./c4rlink32 .quake/*.c4o .quake/plat/qg-bare.c4o .libc-bare/libc-*.c4o -o $GAMESDISK/quake.c4r > /dev/null
+        # (.quake has its own math: c4.mk)
+        ./c4rlink32 .quake/*.c4o .quake/plat/qg-bare.c4o $(ls .libc-bare/libc-*.c4o | grep -v '/libc-math\.c4o$') -o $GAMESDISK/quake.c4r > /dev/null
         if [ -f $GAMEDIR/data/pak0.pak ]; then cp $GAMEDIR/data/pak0.pak $GAMESDISK/; fi
         GAMES_ON_DISK="$GAMES_ON_DISK QUAKE"
     fi ;;
