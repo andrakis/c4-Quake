@@ -46,7 +46,7 @@ Esc; it looks (`+mlook`), as players now expect.
 
 What the compiler and interpreter work has gained since, feature by feature, is in c4's
 [docs/quake-performance.md](https://github.com/andrakis/c4/blob/c4ix_and_toppings/docs/quake-performance.md).
-By 2026-11-06, in the page: 9.4 fps with the MMU and 12.6 without.
+By 2026-11-06, in the page: 10.4 fps with the MMU and 13.1 without.
 
 Measured before any inline math (2026-11-05), demo1 at 320x240: 20.74 M VM
 instructions a frame on the bare machine, 21.3 M under C4IX. Under node on helios:
