@@ -37,16 +37,26 @@ Esc; it looks (`+mlook`), as players now expect.
   player's own for another's, and a loop last of all. A looped sound (a lift, a
   door) goes round again, from its cue point, in the frame that finds it ended:
   the card has no loop. `null.wav`, which doors and lifts play to say nothing,
-  takes no channel. Placed by `snd_dma.c`'s formula, about twenty times a second.
+  takes no channel. Placed by `snd_dma.c`'s formula, about twenty times a second;
+  a sound moves as its entity moves from where it started, since a lift's or a
+  door's origin is its model's offset, near (0,0,0), not where it is.
   The pak's WAVs are 8-bit, 11025 Hz but for two; 20 have a `LIST` chunk whose
   length is past their end, after their data.
 - Four voices for what starts were too few. In demo1 (E1M3) the lift that comes down
   on the player plays a loop for 17.6 seconds while a fight goes on: with four, 242
   sounds in the demo cut off another entity's sound still playing, and the lift's
   loop played once, 1.9 seconds of it. With ten, 34 do (mostly a nailgun's
-  ricochets, a tenth of a second each, near their ends), the lift sounds for 17.56
+  ricochets, a tenth of a second each, near their ends), the lift plays for 17.56
   of its 17.61 seconds, every one of the 75 sounds that start meanwhile plays with
   it, and up to 14 voices sound at once.
+- Played is not heard. Every sound a lift, door or button made was turned down to
+  nothing within a twentieth of a second of starting: the placement moved it to the
+  entity's origin, which for a brush model is its offset from where the map built
+  it. In demo1 the lift played for 17.5 seconds and could be heard for 0.09 of them,
+  before the ten voices and after. Now it is heard for all of it, louder as it comes
+  down. Most sounds cut off still are a sound cutting off its own entity's sound on
+  the same channel -- the nailgun's every shot, a grenade's every bounce -- which is
+  what Quake's own mixer does.
 - `qg-jmp.c`: `setjmp` and `longjmp` on the VM, which has no way to set `bp` but
   `LEV`: two of them in a row put every register back. A server's error abandons the
   frame with it. Only as C allows it: the whole condition of an `if` or a `switch`, or

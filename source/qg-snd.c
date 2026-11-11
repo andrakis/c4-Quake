@@ -49,6 +49,8 @@ typedef struct {
 	sfx_t *sfx;
 	int entnum, entchannel;
 	vec3_t origin;
+	int follow;		// moves as its entity does
+	vec3_t eorg;		// ... whose origin, when last placed, was this
 	float dist_mult;
 	int master;		// 0-255
 	int left, right;	// as last told to the card
@@ -310,6 +312,9 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 	c->entnum = entnum;
 	c->entchannel = entchannel;
 	VectorCopy (origin, c->origin);
+	c->follow = entnum > 0 && entnum < cl.num_entities && entnum != cl.viewentity;
+	if (c->follow)
+		VectorCopy (cl_entities[entnum].origin, c->eorg);
 	c->dist_mult = dist_mult;
 	c->master = master;
 	c->left = left;
@@ -532,6 +537,8 @@ void S_Update (vec3_t origin, vec3_t v_forward, vec3_t v_right, vec3_t v_up)
 	double now;
 	qchan_t *c;
 	int i, l, r, busy;
+	float *e;
+	vec3_t d;
 	if (!on)
 		return;
 	VectorCopy (origin, l_origin);
@@ -547,8 +554,16 @@ void S_Update (vec3_t origin, vec3_t v_forward, vec3_t v_right, vec3_t v_up)
 		c = &dyn[i];
 		if (!c->sfx)
 			continue;
-		if (c->entnum > 0 && c->entnum < cl.num_entities && c->entnum != cl.viewentity)
-			VectorCopy (cl_entities[c->entnum].origin, c->origin);
+		// the sound moves as its entity moves, from where the server said it
+		// was: a lift's or a door's origin is its model's offset from where
+		// the map built it, near (0,0,0), not where it is
+		if (c->follow)
+		{
+			e = cl_entities[c->entnum].origin;
+			VectorSubtract (e, c->eorg, d);
+			VectorAdd (c->origin, d, c->origin);
+			VectorCopy (e, c->eorg);
+		}
 		l = c->left;
 		r = c->right;
 		qs_dyn_place (c);
