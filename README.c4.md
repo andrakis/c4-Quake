@@ -28,12 +28,25 @@ Esc; it looks (`+mlook`), as players now expect.
 - `qg-gui.c`, `qg-c4ix.c`, `qg-bare.c`, `qg-host.c`: the platforms. 320x200, as the
   original ran in VGA: `vid.aspect` says its pixels are not square, and the display
   shows it 4:3. Frames go out 8-bit, as `GUI_BLIT8`.
-- `qg-snd.c`, in place of `snd_null.c`: eight channels of the card, which the host
+- `qg-snd.c`, in place of `snd_null.c`: sixteen channels of the card, which the host
   mixes, so a sound costs a file to load and a few volumes, not a mix a frame. Two
-  are the level's ambience, two the loudest sounds the map places, four whatever
-  starts. Placed by `snd_dma.c`'s formula, about twenty times a second. The pak's
-  WAVs are 8-bit, 11025 Hz but for two; 20 have a `LIST` chunk whose length is past
-  their end, after their data.
+  are the level's ambience, four the loudest looped sounds the map places, ten
+  whatever starts (Quake's own mixer has eight). A card without `SND_HAS_PCM16` has
+  eight: two, two and four. A sound that starts takes its channel as `snd_dma.c`
+  picks one: the same entity's channel, else the one nearest its end, never the
+  player's own for another's, and a loop last of all. A looped sound (a lift, a
+  door) goes round again, from its cue point, in the frame that finds it ended:
+  the card has no loop. `null.wav`, which doors and lifts play to say nothing,
+  takes no channel. Placed by `snd_dma.c`'s formula, about twenty times a second.
+  The pak's WAVs are 8-bit, 11025 Hz but for two; 20 have a `LIST` chunk whose
+  length is past their end, after their data.
+- Four voices for what starts were too few. In demo1 (E1M3) the lift that comes down
+  on the player plays a loop for 17.6 seconds while a fight goes on: with four, 242
+  sounds in the demo cut off another entity's sound still playing, and the lift's
+  loop played once, 1.9 seconds of it. With ten, 34 do (mostly a nailgun's
+  ricochets, a tenth of a second each, near their ends), the lift sounds for 17.56
+  of its 17.61 seconds, every one of the 75 sounds that start meanwhile plays with
+  it, and up to 14 voices sound at once.
 - `qg-jmp.c`: `setjmp` and `longjmp` on the VM, which has no way to set `bp` but
   `LEV`: two of them in a row put every register back. A server's error abandons the
   frame with it. Only as C allows it: the whole condition of an `if` or a `switch`, or

@@ -1,19 +1,36 @@
 // qg-snd.c -- Quake's sound on libjs's card (libjs/guest/snd.h), in place of
-// snd_dma.c and its mixer: eight channels of samples, which the host mixes, so a
+// snd_dma.c and its mixer: sixteen channels of samples, which the host mixes, so a
 // sound costs the game a file to load and a few volumes, not a mix a frame.
 //
 //   0, 1   the level's ambience, water and wind, by the leaf the player is in
-//   2, 3   the two loudest of the sounds a map places (torches, lava, machines)
-//   4-7    everything that starts: shots, footsteps, monsters
+//   2-5    the four loudest of the looped sounds a map places (torches, lava,
+//          machines), one of each
+//   6-15   everything that starts: shots, footsteps, monsters, doors and lifts
+//
+// Ten for what starts, where Quake's own mixer has eight. With four, a fight cut one
+// sound off for another a few times a second, and a lift's loop took one of the four
+// for as long as it moved (E1M3, demo1). A card without SND_HAS_PCM16 has eight
+// channels: then two ambience, two placed and four that start, as before.
+//
+// Which channel a sound that starts takes is snd_dma.c's SND_PickChannel: the same
+// entity's same channel (any of them for channel -1), else the one closest to its end,
+// but never the player's own sound for another entity's, and a loop last of all (it
+// has no end of its own: snd_dma.c could take a lift's loop for a ricochet just as it
+// went round, and the lift was then silent until it stopped). A silent sound (null.wav,
+// which doors and lifts play to say nothing) only stops what it overrides, and a
+// temporary entity's (a ricochet, an explosion) is placed where it is, as Quake
+// places it, not played at full volume wherever it was.
 //
 // Placed in the stereo field by the formula snd_dma.c's SND_Spatialize has, again
 // about twenty times a second, for what moves and for the player turning. The card
-// has no loop: a looped sound is played again when it has ended. -nosound leaves
-// everything as snd_null.c has it, so that a timedemo's frames do not change.
+// has no loop: a looped sound is played again, from its cue point, in the frame that
+// finds it has ended. -nosound leaves everything as snd_null.c has it, so that a
+// timedemo's frames do not change.
 #include "quakedef.h"
 #include "snd.h"
 
-enum { MAX_SFX = 512, MAX_STATIC = 128, CH_AMBIENT = 0, CH_STATIC = 2, NSTATIC = 2, CH_DYN = 4, NDYN = 4, NCH = 8 };
+enum { MAX_SFX = 512, MAX_STATIC = 128, MAX_CAND = 32, CH_AMBIENT = 0, CH_STATIC = 2,
+	MAX_NSTATIC = 4, MAX_NDYN = 10 };
 
 cvar_t bgmvolume = {"bgmvolume", "1", true};
 cvar_t volume = {"volume", "0.7", true};
@@ -22,7 +39,9 @@ cvar_t ambient_fade = {"ambient_fade", "100"};
 
 // what a sound is, in the cache: unsigned 8-bit mono
 typedef struct {
-	int len, rate, loop;
+	int len, rate;
+	int loop;		// where a loop starts again, -1 for none
+	int silent;		// nothing to hear in it
 	unsigned char data[4];
 } qsnd_t;
 
@@ -33,6 +52,7 @@ typedef struct {
 	float dist_mult;
 	int master;		// 0-255
 	int left, right;	// as last told to the card
+	int loop;		// qsnd_t's
 	double end;		// when it will have finished, by the host's clock
 } qchan_t;
 
@@ -45,12 +65,14 @@ typedef struct {
 } qstatic_t;
 
 static int on, ambient_on = 1;
+static int nstat, ch_dyn, ndyn;	// how many placed, where those that start begin, how many
 static sfx_t known[MAX_SFX];
 static int nknown;
-static qchan_t dyn[NDYN];
+static qchan_t dyn[MAX_NDYN];
 static qstatic_t statics[MAX_STATIC];
 static int nstatic;
-static sfx_t *static_now[NSTATIC];
+static sfx_t *static_now[MAX_NSTATIC];
+static int static_vol[MAX_NSTATIC];
 static sfx_t *ambient_sfx[2];
 static int ambient_vol[2];
 static double last_update, last_ambient;
@@ -92,8 +114,8 @@ static qsnd_t *qs_load (sfx_t *s)
 {
 	qsnd_t *q;
 	char name[MAX_QPATH + 8];
-	byte *d, *fmt, *pcm;
-	int size, n, flen, plen, clen, bits, rate, count, i;
+	byte *d, *fmt, *pcm, *cue;
+	int size, flen, plen, clen, bits, rate, count, i, v;
 	if ((q = (qsnd_t *)Cache_Check (&s->cache)))
 		return q;
 	strcpy (name, "sound/");
@@ -123,7 +145,14 @@ static qsnd_t *qs_load (sfx_t *s)
 		return 0;
 	q->len = count;
 	q->rate = rate;
-	q->loop = w_chunk (d, size, "cue ", &clen) != 0;
+	// a cue point loops it, from the first point's sample (GetWavinfo's loopstart)
+	q->loop = -1;
+	if ((cue = w_chunk (d, size, "cue ", &clen)))
+	{
+		q->loop = clen >= 28 ? w_long (cue + 24) : 0;
+		if (q->loop < 0 || q->loop >= count)
+			q->loop = 0;
+	}
 	if (bits == 16)
 	{
 		// the card's samples are 8-bit: the high byte, made unsigned
@@ -132,6 +161,13 @@ static qsnd_t *qs_load (sfx_t *s)
 	}
 	else
 		memcpy (q->data, pcm, count);
+	q->silent = 1;
+	for (i = 0 ; i < count && q->silent ; i++)
+	{
+		v = q->data[i] - 128;
+		if (v > 2 || v < -2)
+			q->silent = 0;
+	}
 	return q;
 }
 
@@ -196,9 +232,11 @@ static void qs_place (vec3_t origin, float dist_mult, int master, int *left, int
 	*left = qs_clamp ((int)(master * scale));
 }
 
+// the player's own sounds are everywhere; the rest, temporary entities' (-1:
+// ricochets, explosions) too, are where they are
 static void qs_dyn_place (qchan_t *c)
 {
-	if (c->entnum == cl.viewentity || c->entnum < 0)
+	if (c->entnum == cl.viewentity)
 	{
 		c->left = qs_clamp (c->master);
 		c->right = c->left;
@@ -213,45 +251,72 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 {
 	qchan_t *c;
 	qsnd_t *q;
-	double now;
-	int i, k;
-	if (!on || !sfx)
+	double now, life, best;
+	int i, k, m, master, left, right;
+	float dist_mult;
+	if (!on || !sfx || !(q = qs_load (sfx)))
 		return;
 	now = Sys_FloatTime ();
-	// the same entity's same channel takes over; then a free one; then what ends soonest
-	k = -1;
+	// the same entity's same channel is overridden: by this sound, or by silence
+	m = -1;
 	if (entchannel)
-		for (i = 0 ; i < NDYN ; i++)
-			if (dyn[i].entnum == entnum && dyn[i].entchannel == entchannel && dyn[i].sfx)
-				k = i;
-	if (k < 0)
-		for (i = 0 ; i < NDYN && k < 0 ; i++)
-			if (!dyn[i].sfx || dyn[i].end <= now)
-				k = i;
+		for (i = 0 ; i < ndyn && m < 0 ; i++)
+			if (dyn[i].sfx && dyn[i].entnum == entnum && (dyn[i].entchannel == entchannel || entchannel == -1))
+				m = i;
+	dist_mult = attenuation / 1000.0;
+	master = (int)(fvol * 255);
+	if (entnum == cl.viewentity)
+	{
+		left = qs_clamp (master);
+		right = left;
+	}
+	else
+		qs_place (origin, dist_mult, master, &left, &right);
+	if (q->silent || (!left && !right))
+	{
+		if (m >= 0)
+		{
+			snd_stop (ch_dyn + m);
+			dyn[m].sfx = 0;
+		}
+		return;
+	}
+	// else a free channel, else the one nearest its end, but not the player's for another's
+	k = m;
 	if (k < 0)
 	{
-		k = 0;
-		for (i = 1 ; i < NDYN ; i++)
-			if (dyn[i].end < dyn[k].end)
+		best = 1e30;
+		for (i = 0 ; i < ndyn ; i++)
+		{
+			if (!dyn[i].sfx)
+				life = -1;
+			else if (dyn[i].entnum == cl.viewentity && entnum != cl.viewentity)
+				continue;
+			else if (dyn[i].loop >= 0)
+				life = 1e9;	// (a loop near its end is only going round again)
+			else
+				life = dyn[i].end - now;
+			if (life < best)
+			{
+				best = life;
 				k = i;
+			}
+		}
+		if (k < 0)
+			return;
 	}
-	if (!(q = qs_load (sfx)))
-		return;
 	c = &dyn[k];
 	c->sfx = sfx;
 	c->entnum = entnum;
 	c->entchannel = entchannel;
 	VectorCopy (origin, c->origin);
-	c->dist_mult = attenuation / 1000.0;
-	c->master = (int)(fvol * 255);
+	c->dist_mult = dist_mult;
+	c->master = master;
+	c->left = left;
+	c->right = right;
+	c->loop = q->loop;
 	c->end = now + (double)q->len / q->rate;
-	qs_dyn_place (c);
-	if (!c->left && !c->right)
-	{
-		c->sfx = 0;
-		return;
-	}
-	snd_play (CH_DYN + k, (char *)q->data, q->len, q->rate, c->left | (c->right << 8));
+	snd_play (ch_dyn + k, (char *)q->data, q->len, q->rate, c->left | (c->right << 8));
 }
 
 void S_StopSound (int entnum, int entchannel)
@@ -259,10 +324,10 @@ void S_StopSound (int entnum, int entchannel)
 	int i;
 	if (!on)
 		return;
-	for (i = 0 ; i < NDYN ; i++)
+	for (i = 0 ; i < ndyn ; i++)
 		if (dyn[i].sfx && dyn[i].entnum == entnum && dyn[i].entchannel == entchannel)
 		{
-			snd_stop (CH_DYN + i);
+			snd_stop (ch_dyn + i);
 			dyn[i].sfx = 0;
 		}
 }
@@ -274,9 +339,9 @@ void S_StopAllSounds (qboolean clear)
 		return;
 	snd_stop (0 - 1);
 	nstatic = 0;
-	for (i = 0 ; i < NDYN ; i++)
+	for (i = 0 ; i < ndyn ; i++)
 		dyn[i].sfx = 0;
-	for (i = 0 ; i < NSTATIC ; i++)
+	for (i = 0 ; i < nstat ; i++)
 		static_now[i] = 0;
 	ambient_vol[0] = 0;
 	ambient_vol[1] = 0;
@@ -286,7 +351,7 @@ void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
 {
 	qstatic_t *s;
 	qsnd_t *q;
-	if (!on || !sfx || nstatic == MAX_STATIC || !(q = qs_load (sfx)) || !q->loop)
+	if (!on || !sfx || nstatic == MAX_STATIC || !(q = qs_load (sfx)) || q->loop < 0)
 		return;
 	s = &statics[nstatic++];
 	s->sfx = sfx;
@@ -303,19 +368,56 @@ void S_LocalSound (char *sound)
 	S_StartSound (cl.viewentity, -1, s, vec3_origin, 1, 1);
 }
 
-// ---- about twenty times a second ----
+// ---- loops: every frame, so a loop waits at most a frame to go round ----
 
-static void qs_loop (int ch, sfx_t *sfx, int left, int right, int restart, int busy)
+// sfx on channel ch: from the start (restart), or round its loop again if it has
+// ended, or else at a new volume
+static void qs_loop (int ch, sfx_t *sfx, int vol, int restart, int busy)
 {
 	qsnd_t *q;
 	if (restart || !(busy & (1 << ch)))
 	{
-		if ((q = qs_load (sfx)))
-			snd_play (ch, (char *)q->data, q->len, q->rate, left | (right << 8));
+		if (!(q = qs_load (sfx)))
+			return;
+		if (restart || q->loop < 0)
+			snd_play (ch, (char *)q->data, q->len, q->rate, vol);
+		else
+			snd_play (ch, (char *)q->data + q->loop, q->len - q->loop, q->rate, vol);
 	}
 	else
-		snd_volume (ch, left | (right << 8));
+		snd_volume (ch, vol);
 }
+
+static void qs_rounds (int busy, double now)
+{
+	qchan_t *c;
+	qsnd_t *q;
+	int i;
+	for (i = 0 ; i < ndyn ; i++)
+	{
+		c = &dyn[i];
+		if (!c->sfx || c->end > now)
+			continue;
+		if (c->loop < 0 || !(q = qs_load (c->sfx)))
+		{
+			c->sfx = 0;
+			continue;
+		}
+		if (!(busy & (1 << (ch_dyn + i))))
+		{
+			snd_play (ch_dyn + i, (char *)q->data + c->loop, q->len - c->loop, q->rate, c->left | (c->right << 8));
+			c->end = now + (double)(q->len - c->loop) / q->rate;
+		}
+	}
+	for (i = 0 ; i < nstat ; i++)
+		if (static_now[i] && !(busy & (1 << (CH_STATIC + i))))
+			qs_loop (CH_STATIC + i, static_now[i], static_vol[i], 0, busy);
+	for (i = 0 ; i < 2 ; i++)
+		if (ambient_vol[i] && ambient_sfx[i] && !(busy & (1 << (CH_AMBIENT + i))))
+			qs_loop (CH_AMBIENT + i, ambient_sfx[i], qs_clamp (ambient_vol[i]) * 257, 0, busy);
+}
+
+// ---- about twenty times a second ----
 
 static void qs_ambient (int busy, double now)
 {
@@ -343,55 +445,86 @@ static void qs_ambient (int busy, double now)
 				snd_stop (CH_AMBIENT + k);
 			continue;
 		}
-		qs_loop (CH_AMBIENT + k, ambient_sfx[k], qs_clamp (ambient_vol[k]), qs_clamp (ambient_vol[k]), 0, busy);
+		qs_loop (CH_AMBIENT + k, ambient_sfx[k], qs_clamp (ambient_vol[k]) * 257, 0, busy);
 	}
 }
 
+// the loudest of each looped sound the map places, the loudest few of those on the
+// channels for them, each staying on the channel it has while it is chosen
 static void qs_statics (int busy)
 {
-	qstatic_t *s, *best[NSTATIC];
-	int i, k, loud, b;
-	for (k = 0 ; k < NSTATIC ; k++)
-		best[k] = 0;
+	qstatic_t *s, *cand[MAX_CAND], *pick[MAX_NSTATIC];
+	int loud[MAX_CAND], i, j, k, n, np, l, used[MAX_NSTATIC];
+	n = 0;
 	for (i = 0 ; i < nstatic ; i++)
 	{
 		s = &statics[i];
 		qs_place (s->origin, s->dist_mult, s->master, &s->left, &s->right);
-		loud = s->left > s->right ? s->left : s->right;
-		if (!loud)
+		l = s->left > s->right ? s->left : s->right;
+		if (!l)
 			continue;
 		// (two of one sound would only be louder)
-		for (k = 0 ; k < NSTATIC ; k++)
+		for (j = 0 ; j < n && cand[j]->sfx != s->sfx ; j++)
+			;
+		if (j == n)
 		{
-			if (!best[k])
+			if (n < MAX_CAND)
+				n++;
+			else
 			{
-				best[k] = s;
-				break;
+				// as many sounds as that: the quietest gives way
+				for (j = 0, k = 1 ; k < n ; k++)
+					if (loud[k] < loud[j])
+						j = k;
+				if (loud[j] >= l)
+					continue;
 			}
-			b = best[k]->left > best[k]->right ? best[k]->left : best[k]->right;
-			if (loud > b)
-			{
-				if (k + 1 < NSTATIC && best[k]->sfx != s->sfx)
-					best[k + 1] = best[k];
-				best[k] = s;
-				break;
-			}
-			if (best[k]->sfx == s->sfx)
-				break;
 		}
-	}
-	for (k = 0 ; k < NSTATIC ; k++)
-	{
-		if (!best[k])
-		{
-			if (static_now[k])
-				snd_stop (CH_STATIC + k);
-			static_now[k] = 0;
+		else if (loud[j] >= l)
 			continue;
-		}
-		qs_loop (CH_STATIC + k, best[k]->sfx, best[k]->left, best[k]->right, static_now[k] != best[k]->sfx, busy);
-		static_now[k] = best[k]->sfx;
+		cand[j] = s;
+		loud[j] = l;
 	}
+	// the loudest nstat of them
+	for (np = 0 ; np < nstat && np < n ; np++)
+	{
+		for (j = np, k = np + 1 ; k < n ; k++)
+			if (loud[k] > loud[j])
+				j = k;
+		s = cand[j]; cand[j] = cand[np]; cand[np] = s;
+		l = loud[j]; loud[j] = loud[np]; loud[np] = l;
+		pick[np] = cand[np];
+	}
+	// those already playing stay where they are; the rest take the channels left
+	for (k = 0 ; k < nstat ; k++)
+		used[k] = 0;
+	for (i = 0 ; i < np ; i++)
+		for (k = 0 ; k < nstat ; k++)
+			if (!used[k] && static_now[k] == pick[i]->sfx)
+			{
+				used[k] = 1;
+				static_vol[k] = pick[i]->left | (pick[i]->right << 8);
+				qs_loop (CH_STATIC + k, pick[i]->sfx, static_vol[k], 0, busy);
+				pick[i] = 0;
+				break;
+			}
+	for (i = 0 ; i < np ; i++)
+	{
+		if (!pick[i])
+			continue;
+		for (k = 0 ; used[k] ; k++)
+			;
+		used[k] = 1;
+		static_now[k] = pick[i]->sfx;
+		static_vol[k] = pick[i]->left | (pick[i]->right << 8);
+		qs_loop (CH_STATIC + k, pick[i]->sfx, static_vol[k], 1, busy);
+	}
+	for (k = 0 ; k < nstat ; k++)
+		if (!used[k] && static_now[k])
+		{
+			snd_stop (CH_STATIC + k);
+			static_now[k] = 0;
+		}
 }
 
 void S_Update (vec3_t origin, vec3_t v_forward, vec3_t v_right, vec3_t v_up)
@@ -404,26 +537,23 @@ void S_Update (vec3_t origin, vec3_t v_forward, vec3_t v_right, vec3_t v_up)
 	VectorCopy (origin, l_origin);
 	VectorCopy (v_right, l_right);
 	now = Sys_FloatTime ();
+	busy = snd_busy ();
+	qs_rounds (busy, now);
 	if (now - last_update < 0.05)
 		return;
 	last_update = now;
-	for (i = 0 ; i < NDYN ; i++)
+	for (i = 0 ; i < ndyn ; i++)
 	{
 		c = &dyn[i];
 		if (!c->sfx)
 			continue;
-		if (c->end <= now)
-		{
-			c->sfx = 0;
-			continue;
-		}
 		if (c->entnum > 0 && c->entnum < cl.num_entities && c->entnum != cl.viewentity)
 			VectorCopy (cl_entities[c->entnum].origin, c->origin);
 		l = c->left;
 		r = c->right;
 		qs_dyn_place (c);
 		if (l != c->left || r != c->right)
-			snd_volume (CH_DYN + i, c->left | (c->right << 8));
+			snd_volume (ch_dyn + i, c->left | (c->right << 8));
 	}
 	busy = snd_busy ();
 	qs_statics (busy);
@@ -438,16 +568,21 @@ static void qs_play_f (void)
 
 void S_Init (void)
 {
+	int caps;
 	Cvar_RegisterVariable (&bgmvolume);
 	Cvar_RegisterVariable (&volume);
 	Cvar_RegisterVariable (&ambient_level);
 	Cvar_RegisterVariable (&ambient_fade);
 	Cmd_AddCommand ("play", qs_play_f);
 	Cmd_AddCommand ("stopsound", qs_play_f);
-	if (COM_CheckParm ("-nosound") || !snd_present () || !(snd_caps () & SND_HAS_PCM))
+	if (COM_CheckParm ("-nosound") || !snd_present () || !((caps = snd_caps ()) & SND_HAS_PCM))
 		return;
 	on = 1;
-	Con_Printf ("Sound: the machine's card, %d channels\n", (int)NCH);
+	// sixteen channels, or eight on a card from before it had sixteen
+	nstat = caps & SND_HAS_PCM16 ? 4 : 2;
+	ch_dyn = CH_STATIC + nstat;
+	ndyn = (caps & SND_HAS_PCM16 ? 16 : 8) - ch_dyn;
+	Con_Printf ("Sound: the machine's card, %d channels\n", ch_dyn + ndyn);
 	ambient_sfx[0] = S_PrecacheSound ("ambience/water1.wav");
 	ambient_sfx[1] = S_PrecacheSound ("ambience/wind2.wav");
 }
