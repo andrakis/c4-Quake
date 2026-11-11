@@ -21,6 +21,34 @@ inline-math flag for c4lc would be for.
 Keys are Quake's own. The mouse locks to the display at the first click, until
 Esc; it looks (`+mlook`), as players now expect.
 
+## The registered game: `quake -home`
+
+`quake -home` plays the person's own Quake, all four episodes: the registered
+game's `id1/pak1.pak`, with its `pak0.pak`. Add them with the page's **Uploads**
+(c4's libjs/README.md), in the folder `/home/quake` (in `/home` itself they play
+too), then start it: Go > Games > Quake (your files) on C4IX, or the page's
+`?system=quake-full` on the bare machine. Each pak is taken from the first place
+that has it (`COM_AddGameDirectory`, `common.c`; `qg_home_dirs`, `qg-sum.c`):
+
+| | its folder | then |
+|---|---|---|
+| C4IX (it has a `/home`) | `/home/quake/` | `/home/` |
+| the bare machine, C4DOS | `quake/` at drive 0's root (`A:\QUAKE`) | drive 0's root |
+
+The registered `pak0.pak` (v1.06) is the shareware's own, byte for byte, so
+where none was uploaded the game's own is used, and `pak1.pak` alone is enough.
+Without `pak1.pak` (`gfx/pop.lmp`, which says the game is registered), `quake
+-home` says what it wants and stops. With `-home` the hunk is 16 MB rather than
+8, for the later episodes' bigger maps.
+
+A path of the person's is opened as it is, not by its last part as the game's
+own `./id1/...` are, and only where it can seek: on C4IX a name its filesystem
+does not have is the disk's, as a stream that cannot (`qg_fopen`). On C4IX the
+paks are files of the host's in `/home`, read a part at a time; on the bare
+machine and under C4DOS each is read whole into memory when it opens (libc's
+`bare.c`, doubling as it reads), 18 MB and 34 MB, so `quake-full` has 256 MB.
+Config and saved games are where the game runs, the shareware's beside them.
+
 ## What is c4's here
 
 - `qg-sum.c`: the main loop, the clock, one `rand` for every build, the flat disks
