@@ -20,6 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.c -- misc functions used in client and server
 
 #include "quakedef.h"
+#ifdef C4QUAKE
+// c4: -home, the person's own paks (qg-sum.c)
+extern int qg_home;
+char **qg_home_dirs (void);
+#endif
 
 #define NUM_SAFE_ARGVS  7
 
@@ -1163,6 +1168,14 @@ void COM_Init (char *basedir)
 
 	COM_InitFilesystem ();
 	COM_CheckRegistered ();
+#ifdef C4QUAKE
+	// c4: quake -home is the registered game; without its pak1 it says what
+	// it wants and stops, as duke3d -home does
+	if (qg_home && !static_registered)
+		Sys_Error ("quake -home plays your own Quake: the registered game's pak1.pak\n"
+			"(and pak0.pak), from its id1. Add them with the page's Uploads\n"
+			"(in /home/quake or /home), then start it again.");
+#endif
 }
 
 
@@ -1710,8 +1723,32 @@ void COM_AddGameDirectory (char *dir)
 //
 	for (i=0 ; ; i++)
 	{
-		sprintf (pakfile, "%s/pak%i.pak", dir, i);
-		pak = COM_LoadPackFile (pakfile);
+#ifdef C4QUAKE
+		// c4: with -home the person's own paks, which the page's Uploads put
+		// in Quake's folder or in /home (qg-sum.c, qg_home_pak): each from the
+		// first place that has it. pak0 is the shareware's own, byte for
+		// byte, so one not uploaded is the game's own.
+		if (qg_home)
+		{
+			char **d;
+			pak = NULL;
+			for (d = qg_home_dirs () ; *d && !pak ; d++)
+			{
+				sprintf (pakfile, "%spak%i.pak", *d, i);
+				pak = COM_LoadPackFile (pakfile);
+			}
+			if (!pak && i == 0)
+			{
+				sprintf (pakfile, "%s/pak%i.pak", dir, i);
+				pak = COM_LoadPackFile (pakfile);
+			}
+		}
+		else
+#endif
+		{
+			sprintf (pakfile, "%s/pak%i.pak", dir, i);
+			pak = COM_LoadPackFile (pakfile);
+		}
 		if (!pak)
 			break;
 		search = Hunk_Alloc (sizeof(searchpath_t));

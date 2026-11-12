@@ -4,15 +4,32 @@
 #include "quakedef.h"
 #include "quakegeneric.h"
 #include <unistd.h>
+#include <sys/stat.h>
 
 // c4's disks are flat: id1/pak0.pak is pak0.pak beside the game. That name first:
 // on C4IX it is a file of the filesystem, which can seek, while the disk also
 // answers the full path, by its last part, with a stream that cannot.
+//
+// A path not of the game's own (they all start "./id1/"): the person's
+// own paks with -home (common.c), "/home/quake/pak1.pak" or "quake/pak1.pak".
+// That one as it is, and only where it can seek: on C4IX a name its
+// filesystem does not have is the disk's, by its last part, as a stream
+// that cannot -- the shareware pak0 for "/home/quake/pak0.pak" -- and a pak
+// is read by seeking.
 #undef fopen
 FILE *qg_fopen (char *path, char *mode)
 {
 	char *b, *q;
 	FILE *f;
+	if (path[0] != '.')
+	{
+		if ((f = fopen (path, mode)) && mode[0] == 'r' && fseek (f, 0, SEEK_SET))
+		{
+			fclose (f);
+			f = 0;
+		}
+		return f;
+	}
 	b = path;
 	for (q = path ; *q ; q++)
 		if (*q == '/')
@@ -114,6 +131,21 @@ void qg_done (void)
 	exit (0);
 }
 
+// -home: the person's own paks, the registered game's, which the page's
+// Uploads put in Quake's folder or in /home. Where to look, in order
+// (common.c, COM_AddGameDirectory): on C4IX /home/quake and /home; on the
+// bare machine and under C4DOS, which have no /home, quake/ at the disk's
+// root and the root (not "/home/..." there: the disk finds a path it does
+// not have by its last part, at the root).
+int qg_home;
+char **qg_home_dirs (void)
+{
+	static char *c4ix[] = { "/home/quake/", "/home/", 0 };
+	static char *disk[] = { "quake/", "", 0 };
+	struct stat st;
+	return stat ("/home", &st) == 0 ? c4ix : disk;
+}
+
 int main(int argc, char **argv)
 {
 	int started, i, timing;
@@ -122,6 +154,8 @@ int main(int argc, char **argv)
 	timing = 0;
 	for (i = 1 ; i < argc ; i++)
 	{
+		if (!strcmp (argv[i], "-home"))
+			qg_home = 1;
 		if (!strcmp (argv[i], "-sum"))
 		{
 			dosum = i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9' ? atoi (argv[i + 1]) : 1;

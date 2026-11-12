@@ -25,11 +25,15 @@ void QG_Tick(double duration)
 	Host_Frame(duration);
 }
 
+extern int qg_home;   // c4: -home (qg-sum.c)
+
 void QG_Create(int argc, char *argv[])
 {
 	static quakeparms_t    parms;
 
-	parms.memsize = 8*1024*1024;
+	// c4: 16 MB for the registered game's bigger maps (-home, qg-sum.c),
+	// the shareware's 8 as it was
+	parms.memsize = (qg_home ? 16 : 8)*1024*1024;
 	parms.membase = malloc (parms.memsize);
 	parms.basedir = ".";
 

@@ -1,5 +1,8 @@
-# Quake (games/quake): the game and id's shareware pak
+# Quake (games/quake): the game and id's shareware pak; and the
+# registered game from the person's own pak1.pak (and pak0.pak), which
+# the page's Uploads put in /home/quake or /home (quake -home)
 #@app Games|Quake|quake
+#@app Games|Quake (your files)|quake -home
 quake/:
 	quake.c4r: c4ix-quake.c4r
 	pak0.pak
