@@ -245,6 +245,9 @@ void Turbulent8 (espan_t *pspan)
 D_DrawSpans8
 =============
 */
+#ifdef C4QUAKE
+#define C4_SPANPIX(k)	pdest[-(k)] = *(pbase + (s >> 16) + (t >> 16) * cachewidth); s += sstep; t += tstep
+#endif
 void D_DrawSpans8 (espan_t *pspan)
 {
 	int				count, spancount;
@@ -358,6 +361,29 @@ void D_DrawSpans8 (espan_t *pspan)
 				}
 			}
 
+#ifdef C4QUAKE
+			/* c4: the run of up to eight pixels without the loop's counting:
+			   pdest moves past them first, and a dense switch, a jump table,
+			   jumps into a run written out, each pixel written back from
+			   there. The same pixels in the same order; the last one's steps
+			   are left out, as s and t start again from snext and tnext. */
+			if (spancount > 0)
+			{
+				pdest += spancount;
+				switch (spancount)
+				{
+				case 8: C4_SPANPIX(8);
+				case 7: C4_SPANPIX(7);
+				case 6: C4_SPANPIX(6);
+				case 5: C4_SPANPIX(5);
+				case 4: C4_SPANPIX(4);
+				case 3: C4_SPANPIX(3);
+				case 2: C4_SPANPIX(2);
+				case 1: pdest[-1] = *(pbase + (s >> 16) + (t >> 16) * cachewidth);
+				}
+			}
+			else
+#endif
 			do
 			{
 				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * cachewidth);

@@ -306,6 +306,16 @@ void R_DrawSurface (void)
 
 //=============================================================================
 
+#ifdef C4QUAKE
+/* c4: a row of a surface block written out, without the loop around it. On
+   c4's stack machine the loop's counting was a quarter of each pixel's
+   work and pix, kept in memory, another; the light steps the same way and
+   the pixels are the same, in the same order. The last pixel's light step
+   is left out: light starts again from lightright on the next row. */
+#define C4_SURFPIX(b)	prowdest[b] = cm[(light & 0xFF00) + psource[b]]; light += lightstep
+#define C4_SURFLAST	prowdest[0] = cm[(light & 0xFF00) + psource[0]]
+#endif
+
 /*
 ================
 R_DrawSurfaceBlock8_mip0
@@ -315,6 +325,9 @@ void R_DrawSurfaceBlock8_mip0 (void)
 {
 	int				v, i, b, lightstep, lighttemp, light;
 	unsigned char	pix, *psource, *prowdest;
+#ifdef C4QUAKE
+	unsigned char	*cm = (unsigned char *)vid.colormap;
+#endif
 
 	psource = pbasesource;
 	prowdest = prowdestbase;
@@ -336,6 +349,13 @@ void R_DrawSurfaceBlock8_mip0 (void)
 
 			light = lightright;
 
+#ifdef C4QUAKE
+			C4_SURFPIX(15); C4_SURFPIX(14); C4_SURFPIX(13); C4_SURFPIX(12);
+			C4_SURFPIX(11); C4_SURFPIX(10); C4_SURFPIX(9); C4_SURFPIX(8);
+			C4_SURFPIX(7); C4_SURFPIX(6); C4_SURFPIX(5); C4_SURFPIX(4);
+			C4_SURFPIX(3); C4_SURFPIX(2); C4_SURFPIX(1);
+			C4_SURFLAST;
+#else
 			for (b=15; b>=0; b--)
 			{
 				pix = psource[b];
@@ -343,6 +363,7 @@ void R_DrawSurfaceBlock8_mip0 (void)
 						[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
+#endif
 	
 			psource += sourcetstep;
 			lightright += lightrightstep;
@@ -365,6 +386,9 @@ void R_DrawSurfaceBlock8_mip1 (void)
 {
 	int				v, i, b, lightstep, lighttemp, light;
 	unsigned char	pix, *psource, *prowdest;
+#ifdef C4QUAKE
+	unsigned char	*cm = (unsigned char *)vid.colormap;
+#endif
 
 	psource = pbasesource;
 	prowdest = prowdestbase;
@@ -386,6 +410,11 @@ void R_DrawSurfaceBlock8_mip1 (void)
 
 			light = lightright;
 
+#ifdef C4QUAKE
+			C4_SURFPIX(7); C4_SURFPIX(6); C4_SURFPIX(5); C4_SURFPIX(4);
+			C4_SURFPIX(3); C4_SURFPIX(2); C4_SURFPIX(1);
+			C4_SURFLAST;
+#else
 			for (b=7; b>=0; b--)
 			{
 				pix = psource[b];
@@ -393,6 +422,7 @@ void R_DrawSurfaceBlock8_mip1 (void)
 						[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
+#endif
 	
 			psource += sourcetstep;
 			lightright += lightrightstep;
@@ -415,6 +445,9 @@ void R_DrawSurfaceBlock8_mip2 (void)
 {
 	int				v, i, b, lightstep, lighttemp, light;
 	unsigned char	pix, *psource, *prowdest;
+#ifdef C4QUAKE
+	unsigned char	*cm = (unsigned char *)vid.colormap;
+#endif
 
 	psource = pbasesource;
 	prowdest = prowdestbase;
@@ -436,6 +469,10 @@ void R_DrawSurfaceBlock8_mip2 (void)
 
 			light = lightright;
 
+#ifdef C4QUAKE
+			C4_SURFPIX(3); C4_SURFPIX(2); C4_SURFPIX(1);
+			C4_SURFLAST;
+#else
 			for (b=3; b>=0; b--)
 			{
 				pix = psource[b];
@@ -443,6 +480,7 @@ void R_DrawSurfaceBlock8_mip2 (void)
 						[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
+#endif
 	
 			psource += sourcetstep;
 			lightright += lightrightstep;
@@ -465,6 +503,9 @@ void R_DrawSurfaceBlock8_mip3 (void)
 {
 	int				v, i, b, lightstep, lighttemp, light;
 	unsigned char	pix, *psource, *prowdest;
+#ifdef C4QUAKE
+	unsigned char	*cm = (unsigned char *)vid.colormap;
+#endif
 
 	psource = pbasesource;
 	prowdest = prowdestbase;
@@ -486,6 +527,10 @@ void R_DrawSurfaceBlock8_mip3 (void)
 
 			light = lightright;
 
+#ifdef C4QUAKE
+			C4_SURFPIX(1);
+			C4_SURFLAST;
+#else
 			for (b=1; b>=0; b--)
 			{
 				pix = psource[b];
@@ -493,6 +538,7 @@ void R_DrawSurfaceBlock8_mip3 (void)
 						[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
+#endif
 	
 			psource += sourcetstep;
 			lightright += lightrightstep;
