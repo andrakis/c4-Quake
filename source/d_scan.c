@@ -404,6 +404,9 @@ void D_DrawSpans8 (espan_t *pspan)
 D_DrawZSpans
 =============
 */
+#ifdef C4QUAKE
+#define C4_ZPAIR(k)	pz[k] = (izi >> 16) | ((izi + izistep) & 0xFFFF0000); izi += izistep2
+#endif
 void D_DrawZSpans (espan_t *pspan)
 {
 	int				count, doublecount, izistep;
@@ -412,10 +415,16 @@ void D_DrawZSpans (espan_t *pspan)
 	unsigned		ltemp;
 	double			zi;
 	float			du, dv;
+#ifdef C4QUAKE
+	int				*pz, izistep2;
+#endif
 
 // FIXME: check for clamping/range problems
 // we count on FP exceptions being turned off to avoid range problems
 	izistep = (int)(d_zistepu * 0x8000 * 0x10000);
+#ifdef C4QUAKE
+	izistep2 = izistep + izistep;
+#endif
 
 	do
 	{
@@ -438,6 +447,30 @@ void D_DrawZSpans (espan_t *pspan)
 			count--;
 		}
 
+#ifdef C4QUAKE
+		/* c4: two pixels a word, as above, four words a turn of the loop
+		   and a jump into the last few, each word one expression: the same
+		   words, izi stepping twice for each (izistep2 is the two steps'
+		   sum, which wraps as the two steps do). */
+		if ((doublecount = count >> 1) > 0)
+		{
+			pz = (int *)pdest;
+			while (doublecount >= 4)
+			{
+				C4_ZPAIR(0); C4_ZPAIR(1); C4_ZPAIR(2); C4_ZPAIR(3);
+				pz += 4;
+				doublecount -= 4;
+			}
+			pz += doublecount;
+			switch (doublecount)
+			{
+			case 3: C4_ZPAIR(-3);
+			case 2: C4_ZPAIR(-2);
+			case 1: C4_ZPAIR(-1);
+			}
+			pdest = (short *)pz;
+		}
+#else
 		if ((doublecount = count >> 1) > 0)
 		{
 			do
@@ -450,6 +483,7 @@ void D_DrawZSpans (espan_t *pspan)
 				pdest += 2;
 			} while (--doublecount > 0);
 		}
+#endif
 
 		if (count & 1)
 			*pdest = (short)(izi >> 16);
