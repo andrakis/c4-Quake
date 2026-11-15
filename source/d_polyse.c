@@ -310,6 +310,18 @@ void D_DrawNonSubdiv (void)
 D_PolysetRecursiveTriangle
 ================
 */
+#ifdef C4QUAKE
+/* what c4/accel.mjs's polytri reads, in its order */
+static struct
+{
+	short	**zspan;
+	byte	**skin;
+	byte	*cmap;
+	int		*scan;
+	byte	*vb;
+} c4_tri;
+#endif
+
 void D_PolysetRecursiveTriangle (int *lp1, int *lp2, int *lp3)
 {
 	int		*temp;
@@ -317,6 +329,17 @@ void D_PolysetRecursiveTriangle (int *lp1, int *lp2, int *lp3)
 	int		new[6];
 	int		z;
 	short	*zbuf;
+
+#ifdef C4QUAKE
+	/* c4: the whole triangle by the machine, when it draws them (d_accel) */
+	if (d_accel)
+	{
+		c4_tri.zspan = zspantable; c4_tri.skin = skintable; c4_tri.cmap = d_pcolormap;
+		c4_tri.scan = d_scantable; c4_tri.vb = d_viewbuffer;
+		qa_polytri (lp1, lp2, lp3, &c4_tri);
+		return;
+	}
+#endif
 
 	d = lp2[0] - lp1[0];
 	if (d < -1 || d > 1)

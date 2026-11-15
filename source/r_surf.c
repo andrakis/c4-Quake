@@ -55,6 +55,9 @@ static void	(*surfmiptable[4])(void) = {
 
 
 unsigned		blocklights[18*18];
+#ifdef C4QUAKE
+static float	c4_dl[4];	/* a light's local[0], local[1], rad and minlight, for qa_dlight */
+#endif
 
 /*
 ===============
@@ -103,6 +106,16 @@ void R_AddDynamicLights (void)
 
 		local[0] -= surf->texturemins[0];
 		local[1] -= surf->texturemins[1];
+
+#ifdef C4QUAKE
+		/* c4: the texels by the machine, when it lights them (d_accel) */
+		if (d_accel)
+		{
+			c4_dl[0] = local[0]; c4_dl[1] = local[1]; c4_dl[2] = rad; c4_dl[3] = minlight;
+			qa_dlight (blocklights, smax, tmax, c4_dl);
+			continue;
+		}
+#endif
 		
 		for (t = 0 ; t<tmax ; t++)
 		{
@@ -177,6 +190,20 @@ void R_BuildLightMap (void)
 			blocklights[i] = 0;
 		return;
 	}
+
+#ifdef C4QUAKE
+	/* c4: the three loops by the machine, when it lights them (d_accel) */
+	if (d_accel)
+	{
+		for (maps = 0 ; lightmap && maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ; maps++)
+			;
+		qa_lmfill (blocklights, size, r_refdef.ambientlight<<8, lightmap, maps, r_drawsurf.lightadj);
+		if (surf->dlightframe == r_framecount)
+			R_AddDynamicLights ();
+		qa_lmfin (blocklights, size, 8 - VID_CBITS);
+		return;
+	}
+#endif
 
 // clear to ambient
 	for (i=0 ; i<size ; i++)

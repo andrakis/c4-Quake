@@ -32,7 +32,7 @@ static struct grin_table *g;
 int qg_take (void) { return grin () == 0; }
 void qg_give (void) {}
 int qg_win_open (void) { return (g = grin ()) != 0 && g->fwin_open ("Quake", QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y, 0); }
-void qg_win_draw (unsigned char *pixels, int *pal) { if (g) g->fwin_frame ((char *)pixels, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y, QUAKEGENERIC_RES_X, pal); }
+void qg_win_draw (unsigned char *pixels, int w, int h, int *pal) { if (g) g->fwin_frame ((char *)pixels, w, h, w, pal); }
 
 // the window's next key, as a browser keyCode and whether it went down:
 // 1, 0 for none waiting, -1 once the window has closed

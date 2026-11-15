@@ -15,13 +15,14 @@
 #include "quakegeneric.h"
 
 int unice (int id, int nice);		// libc4ix (c4ix_user.h)
-enum { QG_NICE = -5, QG_PIXELS = QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y };
+enum { QG_NICE = -5, QG_PIXELS = QUAKEGENERIC_MAX_X * QUAKEGENERIC_MAX_Y };
 
 int qg_take (void) { unice (0, QG_NICE); return udisplay_take (0); }
 void qg_give (void) { udisplay_give (); }
 
 static char *fbuf[2];
 static int *fpal[2];
+static int fw[2], fh[2];		// each buffer's frame's size
 static int sent, waiting, pending, closed;
 
 int qg_win_open (void)
@@ -40,20 +41,22 @@ int qg_win_open (void)
 
 static void send_frame (int b)
 {
-	win_fb (fbuf[b], QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y, QUAKEGENERIC_RES_X, fpal[b]);
+	win_fb (fbuf[b], fw[b], fh[b], fw[b], fpal[b]);
 	win_present ();
 	sent = b;
 	waiting = 1;
 }
 
-void qg_win_draw (unsigned char *pixels, int *pal)
+void qg_win_draw (unsigned char *pixels, int w, int h, int *pal)
 {
 	int b;
 	if (closed)
 		return;
 	// the buffer the desktop is not reading
 	b = waiting ? 1 - sent : sent;
-	memcpy (fbuf[b], pixels, QG_PIXELS);
+	memcpy (fbuf[b], pixels, w * h);
+	fw[b] = w;
+	fh[b] = h;
 	memcpy (fpal[b], pal, 256 * sizeof(int));
 	if (waiting)
 		pending = 1;

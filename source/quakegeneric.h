@@ -27,6 +27,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef C4QUAKE
 // as the original ran in VGA: 17% fewer pixels than 320x240, shown 4:3 (vid.aspect, vid_null.c)
 #define QUAKEGENERIC_RES_Y 200
+// the largest of the Video Options menu's resolutions (vid_null.c): buffers
+// are this big
+#define QUAKEGENERIC_MAX_X 1024
+#define QUAKEGENERIC_MAX_Y 768
 #else
 #define QUAKEGENERIC_RES_Y 240
 #endif

@@ -20,6 +20,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "r_local.h"
+#ifdef C4QUAKE
+#include "d_local.h"
+#include "c4accel.h"	/* c4: Quake's accelerators, d_accel (vid_null.c) */
+
+/* what c4/accel.mjs's particles reads, in its order */
+static struct
+{
+	float		org[3], right[3], up[3], pn[3], xc, yc;
+	float		ft, t1, t2, t3, grav, dvel;
+	int			vbottom, vright, vy, vx;
+	short		*zbuf;
+	int			zw;
+	byte		*vbuf;
+	int			*scan;
+	int			pshift, pmin, pmax, yshift, sw;
+	int			*ramp1, *ramp2, *ramp3;
+} c4_pp;
+#endif
 
 #define MAX_PARTICLES			2048	// default max # of particles at one
 										//  time
@@ -625,7 +643,59 @@ void R_DrawParticles (void)
 	time1 = frametime * 5;
 	grav = frametime * sv_gravity.value * 0.05;
 	dvel = 4*frametime;
-	
+
+#ifdef C4QUAKE
+	/* c4: the dead freed as below, in the same order; then every particle
+	   drawn and moved by the machine, when it does (d_accel) */
+	if (d_accel)
+	{
+		for ( ;; )
+		{
+			kill = active_particles;
+			if (kill && kill->die < cl.time)
+			{
+				active_particles = kill->next;
+				kill->next = free_particles;
+				free_particles = kill;
+				continue;
+			}
+			break;
+		}
+		for (p=active_particles ; p ; p=p->next)
+		{
+			for ( ;; )
+			{
+				kill = p->next;
+				if (kill && kill->die < cl.time)
+				{
+					p->next = kill->next;
+					kill->next = free_particles;
+					free_particles = kill;
+					continue;
+				}
+				break;
+			}
+		}
+		VectorCopy (r_origin, c4_pp.org);
+		VectorCopy (r_pright, c4_pp.right);
+		VectorCopy (r_pup, c4_pp.up);
+		VectorCopy (r_ppn, c4_pp.pn);
+		c4_pp.xc = xcenter; c4_pp.yc = ycenter;
+		c4_pp.ft = frametime; c4_pp.t1 = time1; c4_pp.t2 = time2; c4_pp.t3 = time3;
+		c4_pp.grav = grav; c4_pp.dvel = dvel;
+		c4_pp.vbottom = d_vrectbottom_particle; c4_pp.vright = d_vrectright_particle;
+		c4_pp.vy = d_vrecty; c4_pp.vx = d_vrectx;
+		c4_pp.zbuf = d_pzbuffer; c4_pp.zw = d_zwidth; c4_pp.vbuf = d_viewbuffer; c4_pp.scan = d_scantable;
+		c4_pp.pshift = d_pix_shift; c4_pp.pmin = d_pix_min; c4_pp.pmax = d_pix_max;
+		c4_pp.yshift = d_y_aspect_shift; c4_pp.sw = screenwidth;
+		c4_pp.ramp1 = ramp1; c4_pp.ramp2 = ramp2; c4_pp.ramp3 = ramp3;
+		if (active_particles)
+			qa_particles (active_particles, &c4_pp);
+		D_EndParticles ();
+		return;
+	}
+#endif
+
 	for ( ;; ) 
 	{
 		kill = active_particles;

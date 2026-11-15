@@ -2,8 +2,10 @@
 // where the desktop gives the display way until the game ends (qg-c4ix.c), and
 // the bare machine and C4DOS (qg-bare.c).
 //
-// Quake's 320x200 frames go out 8-bit, as GUI_BLIT8 with their palette, and the
-// host scales them to 640x480. Keys come from the display's event ring as Quake's
+// Quake's frames, 320x200 or the size Video Options chose (vid_null.c), go out
+// 8-bit, as GUI_BLIT8 with their palette, and the host scales them to the
+// display: 640x480, or the frame's own size above that (800x600, 1024x768),
+// which the display is asked to become (GUI_W, GUI_H) when the size changes. Keys come from the display's event ring as Quake's
 // own key codes; the mouse is locked to the display from the first click until Esc
 // (GUI_PTR_LOCK) and its motion is relative. A timedemo runs without the display:
 // its frames are checksummed, not shown, unless -show is given too, so that the
@@ -16,7 +18,7 @@
 int  qg_take (void);		// the display is ours to use (qg-c4ix.c, qg-bare.c)
 void qg_give (void);
 int  qg_win_open (void);		// or a window (C4IX's Terminal, grin's)
-void qg_win_draw (unsigned char *pixels, int *pal);
+void qg_win_draw (unsigned char *pixels, int w, int h, int *pal);
 int  qg_win_key (int *code, int *down);
 void qg_win_close (void);
 void qg_sum_frame (void *pixels);	// qg-sum.c
@@ -31,6 +33,7 @@ static int pal[256];		// 0x00RRGGBB
 static int kq[QKQ];		// keys waiting: (down << 9) | Quake's code
 static int kh, kt;
 static int mdx, mdy;		// the mouse's motion since Quake last asked
+static int dw = QW, dh = QH;	// the display's size
 
 static void qg_close (void)
 {
@@ -106,12 +109,20 @@ void QG_DrawFrame (void *pixels)
 	qg_sum_frame (pixels);
 	if (win)
 	{
-		qg_win_draw ((unsigned char *)pixels, pal);
+		qg_win_draw ((unsigned char *)pixels, vid.width, vid.height, pal);
 		return;
 	}
 	if (!on)
 		return;
-	gui_blit8 (0, 0, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y, (char *)pixels, QUAKEGENERIC_RES_X, pal, QW, QH);
+	if ((vid.width > QW ? vid.width : QW) != dw || (vid.height > QH ? vid.height : QH) != dh)
+	{
+		dw = vid.width > QW ? vid.width : QW;
+		dh = vid.height > QH ? vid.height : QH;
+		*(int *)GUI_W = dw;
+		*(int *)GUI_H = dh;
+		gui_clear (0x000000);
+	}
+	gui_blit8 (0, 0, vid.width, vid.height, (char *)pixels, vid.rowbytes, pal, dw, dh);
 	gui_show ();
 }
 

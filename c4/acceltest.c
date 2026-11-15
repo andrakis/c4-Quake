@@ -1,5 +1,6 @@
 // acceltest.c -- c4's port: Quake's accelerators (c4/accel.mjs) against
-// the loops they stand for, as r_surf.c and d_sprite.c have them, on made-up
+// the loops they stand for, as r_surf.c and d_sprite.c have them (the
+// surface blocks, the sprites' runs, the light maps), on made-up
 // textures and steps. The span lists' (D_DrawSpans8, D_DrawZSpans,
 // Turbulent8, D_PolysetDrawSpans8) are held to gcc's build frame by frame by
 // test-quake itself. test-quake runs this on c4's libjs.
@@ -79,13 +80,70 @@ void test_sspan() {
     }
 }
 
+// R_BuildLightMap's loops and R_AddDynamicLights' texels, as r_surf.c has them
+unsigned blc[18 * 18], bla[18 * 18];
+int adj[4];
+float dlp[4];
+void lightc(unsigned *bl, int size, int ambient, unsigned char *lm, int nmaps, int *adjs) {
+    int i, k;
+    for (i = 0; i < size; i++) bl[i] = ambient;
+    for (k = 0; k < nmaps; k++, lm += size)
+        for (i = 0; i < size; i++) bl[i] += lm[i] * (unsigned)adjs[k];
+}
+void dlightc(unsigned *bl, int smax, int tmax, float l0, float l1, float rad, float minlight) {
+    int s, t, sd, td;
+    float dist;
+    for (t = 0; t < tmax; t++) {
+        td = l1 - t * 16;
+        if (td < 0) td = -td;
+        for (s = 0; s < smax; s++) {
+            sd = l0 - s * 16;
+            if (sd < 0) sd = -sd;
+            if (sd > td) dist = sd + (td >> 1);
+            else dist = td + (sd >> 1);
+            if (dist < minlight)
+                bl[t * smax + s] += (rad - dist) * 256;
+        }
+    }
+}
+void finc(unsigned *bl, int size) {
+    int i, t;
+    for (i = 0; i < size; i++) {
+        t = (255 * 256 - (int)bl[i]) >> 2;
+        if (t < (1 << 6)) t = (1 << 6);
+        bl[i] = t;
+    }
+}
+int same_bl(int n) { int i; for (i = 0; i < n; i++) if (blc[i] != bla[i]) return 0; return 1; }
+void test_light() {
+    int k, smax, tmax, size, nmaps, amb, i, at;
+    for (k = 0; k < 200; k++) {
+        smax = 1 + rnd(18); tmax = 1 + rnd(18); size = smax * tmax;
+        nmaps = rnd(5); amb = rnd(256) << 8; at = rnd(TEXN - 4 * 324);
+        for (i = 0; i < 4; i++) adj[i] = rnd(1 << 9);
+        lightc(blc, size, amb, tex + at, nmaps, adj);
+        qa_lmfill(bla, size, amb, tex + at, nmaps, adj);
+        cases++; if (!same_bl(size)) { fails++; if (fails < 10) printf("accel: lmfill, case %d, differs\n", k); }
+        for (i = 0; i < 1 + rnd(3); i++) {
+            dlp[0] = (float)(rnd(40000) - 10000) * 0.0137f; dlp[1] = (float)(rnd(40000) - 10000) * 0.0119f;
+            dlp[2] = (float)rnd(30000) * 0.0173f; dlp[3] = dlp[2] - (float)rnd(3000) * 0.031f;
+            dlightc(blc, smax, tmax, dlp[0], dlp[1], dlp[2], dlp[3]);
+            qa_dlight(bla, smax, tmax, dlp);
+        }
+        cases++; if (!same_bl(size)) { fails++; if (fails < 10) printf("accel: dlight, case %d, differs\n", k); }
+        finc(blc, size);
+        qa_lmfin(bla, size, 2);
+        cases++; if (!same_bl(size)) { fails++; if (fails < 10) printf("accel: lmfin, case %d, differs\n", k); }
+    }
+}
+
 int main() {
     d_accel = accel_find("quake");
     if (!d_accel) { printf("accel: Quake's are not here
 "); return 0; }
     tex = malloc(TEXN); pal = malloc(PALN); bufc = malloc(BUFN); bufa = malloc(BUFN);
     fill(tex, TEXN, 1); fill(pal, PALN, 0);
-    test_lblock(); test_sspan();
+    test_lblock(); test_sspan(); test_light();
     if (fails) printf("accel: %d of %d cases differ
 ", fails, cases);
     else printf("accel: Quake's, %d cases, each as its loop has it

@@ -88,7 +88,7 @@ void qg_sum_frame (void *pixels)
 		return;
 	p = pixels;
 	s = sum;
-	for (i = 0 ; i < QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y ; i++)
+	for (i = 0 ; i < vid.width * vid.height ; i++)
 		s = s * 31 + p[i];
 	for (i = 0 ; i < 768 ; i++)
 		s = s * 31 + pal[i];
@@ -105,11 +105,11 @@ void qg_sum_frame (void *pixels)
 		for (i = 0 ; i < 3 ; i++)
 			printf ("view: %d %08x %08x %08x %08x\n", i, *(int *)&r_origin[i], *(int *)&vpn[i], *(int *)&vright[i], *(int *)&vup[i]);
 		printf ("view: scales %08x %08x %08x %08x %08x %08x\n", *(int *)&xcenter, *(int *)&ycenter, *(int *)&xscale, *(int *)&yscale, *(int *)&xscaleinv, *(int *)&scale_for_mip);
-		for (y = 0 ; y < QUAKEGENERIC_RES_Y ; y++)
+		for (y = 0 ; y < vid.height ; y++)
 		{
 			printf ("pix: %d %d ", frames, y);
-			for (x = 0 ; x < QUAKEGENERIC_RES_X ; x++)
-				printf ("%02x", p[y * QUAKEGENERIC_RES_X + x]);
+			for (x = 0 ; x < vid.width ; x++)
+				printf ("%02x", p[y * vid.width + x]);
 			printf ("\n");
 		}
 	}

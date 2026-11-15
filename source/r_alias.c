@@ -453,6 +453,17 @@ void R_AliasTransformFinalVert (finalvert_t *fv, auxvert_t *av,
 R_AliasTransformAndProjectFinalVerts
 ================
 */
+#ifdef C4QUAKE
+#include "c4accel.h"	/* c4: Quake's accelerators, d_accel (vid_null.c) */
+/* what c4/accel.mjs's aliasverts reads, in its order */
+static struct
+{
+	float	t[3][4], xc, yc, lv[3], shade;
+	int		ambient;
+	float	*normals;
+} c4_av;
+#endif
+
 void R_AliasTransformAndProjectFinalVerts (finalvert_t *fv, stvert_t *pstverts)
 {
 	int			i, temp;
@@ -460,6 +471,25 @@ void R_AliasTransformAndProjectFinalVerts (finalvert_t *fv, stvert_t *pstverts)
 	trivertx_t	*pverts;
 
 	pverts = r_apverts;
+
+#ifdef C4QUAKE
+	/* c4: by the machine, when it draws them (d_accel): the same ints */
+	if (d_accel)
+	{
+		for (i=0 ; i<3 ; i++)
+		{
+			c4_av.t[i][0] = aliastransform[i][0]; c4_av.t[i][1] = aliastransform[i][1];
+			c4_av.t[i][2] = aliastransform[i][2]; c4_av.t[i][3] = aliastransform[i][3];
+		}
+		c4_av.xc = aliasxcenter; c4_av.yc = aliasycenter;
+		VectorCopy (r_plightvec, c4_av.lv);
+		c4_av.shade = r_shadelight;
+		c4_av.ambient = r_ambientlight;
+		c4_av.normals = &r_avertexnormals[0][0];
+		qa_aliasverts (fv, pstverts, pverts, r_anumverts, &c4_av);
+		return;
+	}
+#endif
 
 	for (i=0 ; i<r_anumverts ; i++, fv++, pverts++, pstverts++)
 	{
