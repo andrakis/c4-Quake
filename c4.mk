@@ -74,8 +74,20 @@ PHONY += quake-data
 # inside C4IX -- must show the same frames, to the checksum of every pixel and the
 # palette. A timedemo's frames do not depend on the display or on sound.
 QUAKE_RUN := -nosound -nocdaudio -sum +timedemo demo3
-test-quake: quake-data quake-host c4bb-images test-libc-bare
+# c4's port: Quake's accelerators (c4/accel.mjs) against their loops, on the
+# bare machine, with libjs's own (cli.js loads them, docs/accel.md); the span
+# lists' are held to gcc's frames below
+# In a directory of its own: c4-images.sh links .quake/*.c4o into the game.
+.quake/test/acceltest.c4o: games/quake/c4/acceltest.c $(QUAKE_HDRS) $(C4LC_LISP) .img_g | c4sp32
+	@mkdir -p .quake/test
+	$(QUAKE_CC) $< $@ > /dev/null
+.quake/test/acceltest.c4r: .quake/test/acceltest.c4o libc-bare-objs
+	./c4rlink32 $< .libc-bare/libc-*.c4o -o $@ > /dev/null
+test-quake: quake-data quake-host c4bb-images test-libc-bare .quake/test/acceltest.c4r
 	@rm -rf .quake_t && mkdir -p .quake_t/id1
+	@timeout 600 node libjs/cli.js -m 64 .quake/test/acceltest.c4r > .quake_t/accel.txt 2>&1; cat .quake_t/accel.txt
+	@grep -q "^accel: Quake's, [0-9]* cases, each as its loop has it" .quake_t/accel.txt \
+	   || { echo "test-quake: the accelerators do not draw as their loops"; exit 1; }
 	@cp $(QUAKE_DATA)/pak0.pak .quake_t/id1/
 	@cd .quake_t && ../quake-host $(QUAKE_RUN) 2>/dev/null | grep '^timedemo' > host.txt
 	@cat .quake_t/host.txt

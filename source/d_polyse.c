@@ -23,6 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 #include "d_local.h"
+#ifdef C4QUAKE
+#include "c4accel.h"	/* c4: Quake's accelerators, d_accel (vid_null.c) */
+#endif
 
 // TODO: put in span spilling to shrink list size
 // !!! if this is changed, it must be changed in d_polysa.s too !!!
@@ -595,6 +598,18 @@ void D_PolysetDrawSpans8 (spanpackage_t *pspanpackage)
 	int		llight;
 	int		lzi;
 	short	*lpz;
+
+#ifdef C4QUAKE
+	/* c4: the spans by the machine, when it draws them (d_accel): the same
+	   pixels and z, and d_aspancount and errorterm left as below */
+	if (d_accel)
+	{
+		qa_polyspans (pspanpackage, &d_aspancount, &errorterm, erroradjustup, erroradjustdown,
+		              d_countextrastep, ubasestep, acolormap, r_zistepx, r_lstepx,
+		              a_ststepxwhole, a_sstepxfrac, a_tstepxfrac, r_affinetridesc.skinwidth);
+		return;
+	}
+#endif
 
 	do
 	{

@@ -25,7 +25,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "d_local.h"
 #ifdef C4QUAKE
-#include "accel.h"	/* c4: d_accel, vid_null.c */
+#include "c4accel.h"	/* c4: Quake's accelerators, d_accel (vid_null.c) */
+
+/* the nine gradients, in the order c4/accel.mjs reads them */
+static float	c4_grad[9];
+static void C4_Grad (void)
+{
+	c4_grad[0] = d_sdivzstepu; c4_grad[1] = d_tdivzstepu; c4_grad[2] = d_zistepu;
+	c4_grad[3] = d_sdivzstepv; c4_grad[4] = d_tdivzstepv; c4_grad[5] = d_zistepv;
+	c4_grad[6] = d_sdivzorigin; c4_grad[7] = d_tdivzorigin; c4_grad[8] = d_ziorigin;
+}
 #endif
 
 unsigned char	*r_turb_pbase, *r_turb_pdest;
@@ -124,6 +133,18 @@ void Turbulent8 (espan_t *pspan)
 	float			sdivz16stepu, tdivz16stepu, zi16stepu;
 	
 	r_turb_turb = sintable + ((int)(cl.time*SPEED)&(CYCLE-1));
+
+#ifdef C4QUAKE
+	/* c4: the whole list by the machine, when it draws them (d_accel): the
+	   same pixels, the same floats */
+	if (d_accel)
+	{
+		C4_Grad ();
+		qa_turb8 (pspan, cacheblock, d_viewbuffer, screenwidth, sadjust, tadjust,
+		          bbextents, bbextentt, r_turb_turb, c4_grad);
+		return;
+	}
+#endif
 
 	r_turb_sstep = 0;	// keep compiler happy
 	r_turb_tstep = 0;	// ditto
@@ -259,6 +280,18 @@ void D_DrawSpans8 (espan_t *pspan)
 	float			sdivz, tdivz, zi, z, du, dv, spancountminus1;
 	float			sdivz8stepu, tdivz8stepu, zi8stepu;
 
+#ifdef C4QUAKE
+	/* c4: the whole list by the machine, when it draws them (d_accel): the
+	   same pixels, the same floats */
+	if (d_accel)
+	{
+		C4_Grad ();
+		qa_spans8 (pspan, cacheblock, d_viewbuffer, screenwidth, cachewidth, sadjust, tadjust,
+		           bbextents, bbextentt, c4_grad);
+		return;
+	}
+#endif
+
 	sstep = 0;	// keep compiler happy
 	tstep = 0;	// ditto
 
@@ -365,19 +398,12 @@ void D_DrawSpans8 (espan_t *pspan)
 			}
 
 #ifdef C4QUAKE
-			/* c4: a machine that draws the run itself (vid_null.c's d_accel)
-			   does, one instruction (c4's libjs/guest/accel.h) */
-			if (spancount > 0 && d_accel)
-			{
-				accel_span(spancount, s, t, sstep, tstep, pbase, cachewidth, pdest);
-				pdest += spancount;
-			}
 			/* c4: the run of up to eight pixels without the loop's counting:
 			   pdest moves past them first, and a dense switch, a jump table,
 			   jumps into a run written out, each pixel written back from
 			   there. The same pixels in the same order; the last one's steps
 			   are left out, as s and t start again from snext and tnext. */
-			else if (spancount > 0)
+			if (spancount > 0)
 			{
 				pdest += spancount;
 				switch (spancount)
@@ -427,6 +453,15 @@ void D_DrawZSpans (espan_t *pspan)
 	float			du, dv;
 #ifdef C4QUAKE
 	int				*pz, izistep2;
+
+	/* c4: the whole list by the machine, when it draws them (d_accel): the
+	   same shorts, the same floats */
+	if (d_accel)
+	{
+		C4_Grad ();
+		qa_zspans (pspan, d_pzbuffer, d_zwidth, c4_grad);
+		return;
+	}
 #endif
 
 // FIXME: check for clamping/range problems
@@ -449,16 +484,6 @@ void D_DrawZSpans (espan_t *pspan)
 		zi = d_ziorigin + dv*d_zistepv + du*d_zistepu;
 	// we count on FP exceptions being turned off to avoid range problems
 		izi = (int)(zi * 0x8000 * 0x10000);
-
-#ifdef C4QUAKE
-		/* c4: the whole span by the machine, when it draws them (vid_null.c's
-		   d_accel): the same shorts as below, one at a time */
-		if (d_accel)
-		{
-			accel_zspan(count, izi, izistep, pdest);
-			continue;
-		}
-#endif
 
 		if ((intptr_t)pdest & 0x02)
 		{

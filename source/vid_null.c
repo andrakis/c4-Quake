@@ -25,26 +25,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakegeneric.h"
 
 #ifdef C4QUAKE
-/* c4: a machine that says so in INFO draws the texture spans, the z spans
-   and the surface blocks itself, one instruction each (c4's
-   libjs/guest/accel.h, docs/accel.md; d_scan.c, r_surf.c): the same pixels.
-   vid_accel, saved in config.cfg, is the Video Options menu's "Browser
-   accelerated"; d_accel is whether the frame draws that way. */
-#include "accel.h"
+/* c4: a machine that has Quake's accelerators (c4/accel.mjs, c4accel.h)
+   draws the span lists, z spans, water, surface blocks, sprites and models'
+   spans itself, one instruction each (d_scan.c, d_sprite.c, d_polyse.c,
+   r_surf.c): the same pixels. vid_accel, saved in config.cfg, is the Video
+   Options menu's "Browser accelerated"; d_accel is the first of Quake's
+   numbers while the frame draws that way, else 0. */
+#include "c4accel.h"
 cvar_t	vid_accel = {"vid_accel", "1", true};
 int		d_accel;
-static int	vid_accel_there = -1;
+static int	vid_accel_base = -1;
 
 static int VID_AccelThere (void)
 {
-	if (vid_accel_there < 0)
-		vid_accel_there = accel_present ();
-	return vid_accel_there;
+	if (vid_accel_base < 0)
+		vid_accel_base = accel_find ("quake");
+	return vid_accel_base;
 }
 
 static void VID_AccelUpdate (void)
 {
-	d_accel = vid_accel.value != 0 && VID_AccelThere ();
+	d_accel = vid_accel.value != 0 ? VID_AccelThere () : 0;
 }
 
 extern void (*vid_menudrawfn)(void);

@@ -22,8 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 #ifdef C4QUAKE
-#include "accel.h"	/* c4: d_accel, vid_null.c */
-extern int d_accel;
+#include "c4accel.h"	/* c4: Quake's accelerators, d_accel (vid_null.c) */
 #endif
 
 drawsurf_t	r_drawsurf;
@@ -374,7 +373,7 @@ void R_DrawSurfaceBlock8_mip0 (void)
 		   as the rows would have */
 		if (d_accel)
 		{
-			accel_lblock(16, 4, lightleft, lightright, lightleftstep, lightrightstep,
+			qa_lblock(16, 4, lightleft, lightright, lightleftstep, lightrightstep,
 			             psource, sourcetstep, cm, prowdest, surfrowbytes);
 			psource += 16 * sourcetstep;
 			prowdest += 16 * surfrowbytes;
@@ -450,7 +449,7 @@ void R_DrawSurfaceBlock8_mip1 (void)
 		   as the rows would have */
 		if (d_accel)
 		{
-			accel_lblock(8, 3, lightleft, lightright, lightleftstep, lightrightstep,
+			qa_lblock(8, 3, lightleft, lightright, lightleftstep, lightrightstep,
 			             psource, sourcetstep, cm, prowdest, surfrowbytes);
 			psource += 8 * sourcetstep;
 			prowdest += 8 * surfrowbytes;
@@ -524,7 +523,7 @@ void R_DrawSurfaceBlock8_mip2 (void)
 		   as the rows would have */
 		if (d_accel)
 		{
-			accel_lblock(4, 2, lightleft, lightright, lightleftstep, lightrightstep,
+			qa_lblock(4, 2, lightleft, lightright, lightleftstep, lightrightstep,
 			             psource, sourcetstep, cm, prowdest, surfrowbytes);
 			psource += 4 * sourcetstep;
 			prowdest += 4 * surfrowbytes;
@@ -597,7 +596,7 @@ void R_DrawSurfaceBlock8_mip3 (void)
 		   as the rows would have */
 		if (d_accel)
 		{
-			accel_lblock(2, 1, lightleft, lightright, lightleftstep, lightrightstep,
+			qa_lblock(2, 1, lightleft, lightright, lightleftstep, lightrightstep,
 			             psource, sourcetstep, cm, prowdest, surfrowbytes);
 			psource += 2 * sourcetstep;
 			prowdest += 2 * surfrowbytes;
