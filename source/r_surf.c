@@ -120,7 +120,29 @@ void R_AddDynamicLights (void)
 				else
 					dist = td + (sd>>1);
 				if (dist < minlight)
+#ifdef C4QUAKE
+				{
+					/* c4: the same sum, through int. An unsigned += a float is
+					   the unsigned made a float, the sum, and back; c4's FPU
+					   has float to and from int, and unsigned goes through the
+					   library, some 300 instructions a texel under a rocket's
+					   light. Here the float is above 0 (rad - dist > minlight's
+					   own, which is not negative) and the light far below
+					   2^31, where int converts exactly as unsigned does; past
+					   2^31 it is done as it was. */
+					unsigned	*bl = &blocklights[t*smax + s];
+					float		sum;
+					if (*bl < 0x80000000u)
+					{
+						sum = (float)(int)*bl + (rad - dist)*256;
+						*bl = sum < 2147483648.0f ? (unsigned)(int)sum : (unsigned)sum;
+					}
+					else
+						*bl += (rad - dist)*256;
+				}
+#else
 					blocklights[t*smax + s] += (rad - dist)*256;
+#endif
 			}
 		}
 	}
