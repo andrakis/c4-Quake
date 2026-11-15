@@ -22,6 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "d_local.h"
+#ifdef C4QUAKE
+#include "accel.h"	/* c4: d_accel, vid_null.c */
+#endif
 
 static int		sprite_height;
 static int		minindex, maxindex;
@@ -156,6 +159,17 @@ void D_SpriteDrawSpans (sspan_t *pspan)
 				}
 			}
 
+#ifdef C4QUAKE
+			/* c4: a machine that draws the run itself (vid_null.c's d_accel)
+			   does, one instruction (c4's libjs/guest/accel.h) */
+			if (spancount > 0 && d_accel)
+			{
+				izi = accel_sspan(spancount, s, t, sstep, tstep, pbase, cachewidth, pdest, pz, izi, izistep);
+				pdest += spancount;
+				pz += spancount;
+			}
+			else
+#endif
 			do
 			{
 				btemp = *(pbase + (s >> 16) + (t >> 16) * cachewidth);

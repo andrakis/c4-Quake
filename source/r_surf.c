@@ -21,6 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "r_local.h"
+#ifdef C4QUAKE
+#include "accel.h"	/* c4: d_accel, vid_null.c */
+extern int d_accel;
+#endif
 
 drawsurf_t	r_drawsurf;
 
@@ -342,6 +346,21 @@ void R_DrawSurfaceBlock8_mip0 (void)
 		lightleftstep = (r_lightptr[0] - lightleft) >> 4;
 		lightrightstep = (r_lightptr[1] - lightright) >> 4;
 
+#ifdef C4QUAKE
+		/* c4: the block by the machine, when it draws them (vid_null.c's
+		   d_accel): the same pixels in the same order, the lights stepped
+		   as the rows would have */
+		if (d_accel)
+		{
+			accel_lblock(16, 4, lightleft, lightright, lightleftstep, lightrightstep,
+			             psource, sourcetstep, cm, prowdest, surfrowbytes);
+			psource += 16 * sourcetstep;
+			prowdest += 16 * surfrowbytes;
+			lightleft += 16 * lightleftstep;
+			lightright += 16 * lightrightstep;
+		}
+		else
+#endif
 		for (i=0 ; i<16 ; i++)
 		{
 			lighttemp = lightleft - lightright;
@@ -403,6 +422,21 @@ void R_DrawSurfaceBlock8_mip1 (void)
 		lightleftstep = (r_lightptr[0] - lightleft) >> 3;
 		lightrightstep = (r_lightptr[1] - lightright) >> 3;
 
+#ifdef C4QUAKE
+		/* c4: the block by the machine, when it draws them (vid_null.c's
+		   d_accel): the same pixels in the same order, the lights stepped
+		   as the rows would have */
+		if (d_accel)
+		{
+			accel_lblock(8, 3, lightleft, lightright, lightleftstep, lightrightstep,
+			             psource, sourcetstep, cm, prowdest, surfrowbytes);
+			psource += 8 * sourcetstep;
+			prowdest += 8 * surfrowbytes;
+			lightleft += 8 * lightleftstep;
+			lightright += 8 * lightrightstep;
+		}
+		else
+#endif
 		for (i=0 ; i<8 ; i++)
 		{
 			lighttemp = lightleft - lightright;
@@ -462,6 +496,21 @@ void R_DrawSurfaceBlock8_mip2 (void)
 		lightleftstep = (r_lightptr[0] - lightleft) >> 2;
 		lightrightstep = (r_lightptr[1] - lightright) >> 2;
 
+#ifdef C4QUAKE
+		/* c4: the block by the machine, when it draws them (vid_null.c's
+		   d_accel): the same pixels in the same order, the lights stepped
+		   as the rows would have */
+		if (d_accel)
+		{
+			accel_lblock(4, 2, lightleft, lightright, lightleftstep, lightrightstep,
+			             psource, sourcetstep, cm, prowdest, surfrowbytes);
+			psource += 4 * sourcetstep;
+			prowdest += 4 * surfrowbytes;
+			lightleft += 4 * lightleftstep;
+			lightright += 4 * lightrightstep;
+		}
+		else
+#endif
 		for (i=0 ; i<4 ; i++)
 		{
 			lighttemp = lightleft - lightright;
@@ -520,6 +569,21 @@ void R_DrawSurfaceBlock8_mip3 (void)
 		lightleftstep = (r_lightptr[0] - lightleft) >> 1;
 		lightrightstep = (r_lightptr[1] - lightright) >> 1;
 
+#ifdef C4QUAKE
+		/* c4: the block by the machine, when it draws them (vid_null.c's
+		   d_accel): the same pixels in the same order, the lights stepped
+		   as the rows would have */
+		if (d_accel)
+		{
+			accel_lblock(2, 1, lightleft, lightright, lightleftstep, lightrightstep,
+			             psource, sourcetstep, cm, prowdest, surfrowbytes);
+			psource += 2 * sourcetstep;
+			prowdest += 2 * surfrowbytes;
+			lightleft += 2 * lightleftstep;
+			lightright += 2 * lightrightstep;
+		}
+		else
+#endif
 		for (i=0 ; i<2 ; i++)
 		{
 			lighttemp = lightleft - lightright;

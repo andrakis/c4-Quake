@@ -99,6 +99,9 @@ extern pixel_t	*d_viewbuffer;
 extern short	*zspantable[MAXHEIGHT];
 
 extern int		d_minmip;
+#ifdef C4QUAKE
+extern int		d_accel;	// c4: the machine draws spans and z spans (vid_null.c)
+#endif
 extern float	d_scalemip[3];
 
 extern void (*d_drawspans) (espan_t *pspan);

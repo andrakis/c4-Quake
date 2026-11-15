@@ -23,7 +23,7 @@ QUAKE_PLAT  := qg-c4ix qg-bare
 QUAKE_HDRS  := $(wildcard $(QUAKE)/*.h games/quake/c4inc/*.h) \
                $(wildcard src/c4ix/libc/include/*.h src/c4ix/libc/include/sys/*.h) \
                src/c4ix/include/display.h src/c4ix/include/window.h src/c4ix/include/window.c \
-               libjs/guest/gui.h libjs/guest/gui.c libjs/guest/snd.h libjs/guest/snd.c
+               libjs/guest/gui.h libjs/guest/gui.c libjs/guest/snd.h libjs/guest/snd.c libjs/guest/accel.h
 QUAKE_CC    := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -mfpu -fno-builtin -c -conforming \
                -D C4QUAKE -I games/quake/c4inc -I src/c4ix/libc/include -I src/c4ix/include \
                -I libjs/guest -I $(QUAKE)
@@ -48,8 +48,8 @@ PHONY += quake-objs
 # ... and by gcc for the host, 32-bit as the c4lc build is. -mfpmath=sse: x87's
 # excess precision is not what c4's FPU does, and the frames would part.
 QUAKE_HOST_SRCS := $(QUAKE_UNITS:%=$(QUAKE)/%.c) $(QUAKE)/snd_null.c $(QUAKE)/qg-host.c
-quake-host: $(QUAKE_HOST_SRCS) $(wildcard $(QUAKE)/*.h)
-	gcc -m32 -std=gnu99 -O2 -msse2 -mfpmath=sse -ffp-contract=off -fno-strict-aliasing -w -DC4QUAKE -I$(QUAKE) \
+quake-host: $(QUAKE_HOST_SRCS) $(wildcard $(QUAKE)/*.h) libjs/guest/accel.h
+	gcc -m32 -std=gnu99 -O2 -msse2 -mfpmath=sse -ffp-contract=off -fno-strict-aliasing -w -DC4QUAKE -I$(QUAKE) -Ilibjs/guest \
 	    -o $@ $(QUAKE_HOST_SRCS) -lm
 
 # The data, which is not in the repository: id's shareware package as it was

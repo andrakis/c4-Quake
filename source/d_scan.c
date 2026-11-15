@@ -24,6 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 #include "d_local.h"
+#ifdef C4QUAKE
+#include "accel.h"	/* c4: d_accel, vid_null.c */
+#endif
 
 unsigned char	*r_turb_pbase, *r_turb_pdest;
 fixed16_t		r_turb_s, r_turb_t, r_turb_sstep, r_turb_tstep;
@@ -362,12 +365,19 @@ void D_DrawSpans8 (espan_t *pspan)
 			}
 
 #ifdef C4QUAKE
+			/* c4: a machine that draws the run itself (vid_null.c's d_accel)
+			   does, one instruction (c4's libjs/guest/accel.h) */
+			if (spancount > 0 && d_accel)
+			{
+				accel_span(spancount, s, t, sstep, tstep, pbase, cachewidth, pdest);
+				pdest += spancount;
+			}
 			/* c4: the run of up to eight pixels without the loop's counting:
 			   pdest moves past them first, and a dense switch, a jump table,
 			   jumps into a run written out, each pixel written back from
 			   there. The same pixels in the same order; the last one's steps
 			   are left out, as s and t start again from snext and tnext. */
-			if (spancount > 0)
+			else if (spancount > 0)
 			{
 				pdest += spancount;
 				switch (spancount)
@@ -439,6 +449,16 @@ void D_DrawZSpans (espan_t *pspan)
 		zi = d_ziorigin + dv*d_zistepv + du*d_zistepu;
 	// we count on FP exceptions being turned off to avoid range problems
 		izi = (int)(zi * 0x8000 * 0x10000);
+
+#ifdef C4QUAKE
+		/* c4: the whole span by the machine, when it draws them (vid_null.c's
+		   d_accel): the same shorts as below, one at a time */
+		if (d_accel)
+		{
+			accel_zspan(count, izi, izistep, pdest);
+			continue;
+		}
+#endif
 
 		if ((intptr_t)pdest & 0x02)
 		{
