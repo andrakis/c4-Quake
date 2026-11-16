@@ -120,6 +120,12 @@ extern	float	xscaleshrink, yscaleshrink;
 extern	int d_lightstylevalue[256]; // 8.8 frac of base light value
 
 extern void TransformVector (vec3_t in, vec3_t out);
+#if defined(C4QUAKE) && defined(__c4_inttypes__)
+// c4lc: the three dot products where they stand, not a call (700 a frame,
+// from the edges and the surfaces). Every caller passes an array, or an
+// array in a struct, which the dot products read as the function did.
+#define TransformVector(in, out) ((out)[0] = DotProduct((in), vright), 	(out)[1] = DotProduct((in), vup), (out)[2] = DotProduct((in), vpn))
+#endif
 extern void SetUpForLineScan(fixed8_t startvertu, fixed8_t startvertv,
 	fixed8_t endvertu, fixed8_t endvertv);
 

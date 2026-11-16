@@ -34,6 +34,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdlib.h>
 #include <setjmp.h>
 
+#if defined(C4QUAKE) && defined(__c4_inttypes__)
+// c4lc: (int)ceil(x) where it stands, not two calls (ceil's, and the frame's
+// for it), about 650 a frame from the edges and the models' light steps. x
+// goes once into c4q_ceil_d, and what comes out is an int, so two in one
+// expression cannot meet in it: c4lc works out each operand whole before
+// the next. Within the int range e = (int)x is x towards zero, and x > e
+// only for a positive x that is not whole, as ceil has it; outside it, and
+// for a NaN, ceil itself.
+static double c4q_ceil_d;
+static int c4q_ceil_i;
+#define C4_ICEIL(x) (c4q_ceil_d = (x), \
+	c4q_ceil_d > -2147483648.0 && c4q_ceil_d < 2147483648.0 ? \
+	(c4q_ceil_i = (int)c4q_ceil_d, c4q_ceil_d > (double)c4q_ceil_i ? c4q_ceil_i + 1 : c4q_ceil_i) : \
+	(int)ceil(c4q_ceil_d))
+#else
+#define C4_ICEIL(x) ((int)ceil(x))
+#endif
+
 #ifdef C4QUAKE
 // c4: the same numbers on every build, so that the frames can be compared
 // (qg-sum.c), and a date that does not change the image

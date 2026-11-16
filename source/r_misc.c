@@ -296,6 +296,7 @@ void R_TransformFrustum (void)
 TransformVector
 ================
 */
+#undef TransformVector
 void TransformVector (vec3_t in, vec3_t out)
 {
 	out[0] = DotProduct(in,vright);
