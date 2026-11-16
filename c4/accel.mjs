@@ -481,5 +481,21 @@ export default function quake({ reader, writer, reader32, writer32, probe, args,
     return 0;
   }
 
-  return [spans8, zspans, turb8, lblock, sspan, polyspans, particles, lmfill, dlight, lmfin, aliasverts, polytri];
+  // QA_SINCOS (pa, ps, pc): the sine and cosine of the float at pa, as the
+  // floats at ps and pc: (float)sin(a) and (float)cos(a), AngleVectors'
+  // three pairs, with the browser's Math.sin and Math.cos rather than
+  // libc's. Those can differ from libc's in a double's last bit, which a
+  // float hardly ever keeps; the user chose the speed (2026-11-16). What it
+  // writes is the same if it runs again, so it needs no probe.
+  function sincos(m) {
+    const [pa, ps, pc] = args(m, 3);
+    const r32 = reader32(m), w32 = writer32(m);
+    const a = fval(r32(pa));
+    w32(ps, fbits(fr(Math.sin(a))));
+    w32(pc, fbits(fr(Math.cos(a))));
+    return 0;
+  }
+
+  return [spans8, zspans, turb8, lblock, sspan, polyspans, particles, lmfill, dlight, lmfin, aliasverts, polytri,
+    sincos];
 }

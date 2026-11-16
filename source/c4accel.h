@@ -11,7 +11,7 @@
 #include "accel.h"
 
 enum { QA_SPANS8, QA_ZSPANS, QA_TURB8, QA_LBLOCK, QA_SSPAN, QA_POLYSPANS,
-	QA_PARTICLES, QA_LMFILL, QA_DLIGHT, QA_LMFIN, QA_ALIASVERTS, QA_POLYTRI };
+	QA_PARTICLES, QA_LMFILL, QA_DLIGHT, QA_LMFIN, QA_ALIASVERTS, QA_POLYTRI, QA_SINCOS };
 
 extern int d_accel;
 
@@ -42,6 +42,9 @@ extern int d_accel;
    a small triangle split to its pixels (d_polyse.c's c4_tri) */
 #define qa_aliasverts(fv, st, pv, n, prm) __c4_opcode((fv), (st), (pv), (n), (prm), QA_OP(QA_ALIASVERTS))
 #define qa_polytri(p1, p2, p3, prm) __c4_opcode((p1), (p2), (p3), (prm), QA_OP(QA_POLYTRI))
+/* the float at pa's sine and cosine, as floats at ps and pc (mathlib.c's
+   AngleVectors) */
+#define qa_sincos(pa, ps, pc) __c4_opcode((pa), (ps), (pc), QA_OP(QA_SINCOS))
 #else
 #define qa_spans8(pspan, pbase, vb, sw, cw, sadj, tadj, bbs, bbt, grad) 0
 #define qa_zspans(pspan, zbuf, zw, grad) 0
@@ -55,6 +58,7 @@ extern int d_accel;
 #define qa_lmfin(bl, size, shift) 0
 #define qa_aliasverts(fv, st, pv, n, prm) 0
 #define qa_polytri(p1, p2, p3, prm) 0
+#define qa_sincos(pa, ps, pc) 0
 #endif
 
 #endif

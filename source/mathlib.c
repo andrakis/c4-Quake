@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <math.h>
 #include "quakedef.h"
+#if defined(C4QUAKE) && defined(__c4_inttypes__)
+#include "c4accel.h"
+#endif
 
 void Sys_Error (char *error, ...);
 
@@ -278,6 +281,22 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 	float		angle;
 	float		sr, sp, sy, cr, cp, cy;
 	
+#if defined(C4QUAKE) && defined(__c4_inttypes__)
+	// c4: by the accelerators, while they are on, the sine and the cosine
+	// together for each angle: libc's take about 330 instructions each,
+	// most of it the argument's reduction (c4accel.h)
+	if (d_accel > 0)
+	{
+		angle = angles[YAW] * (M_PI*2 / 360);
+		qa_sincos(&angle, &sy, &cy);
+		angle = angles[PITCH] * (M_PI*2 / 360);
+		qa_sincos(&angle, &sp, &cp);
+		angle = angles[ROLL] * (M_PI*2 / 360);
+		qa_sincos(&angle, &sr, &cr);
+	}
+	else
+#endif
+	{
 	angle = angles[YAW] * (M_PI*2 / 360);
 	sy = sin(angle);
 	cy = cos(angle);
@@ -287,6 +306,7 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 	angle = angles[ROLL] * (M_PI*2 / 360);
 	sr = sin(angle);
 	cr = cos(angle);
+	}
 
 	forward[0] = cp*cy;
 	forward[1] = cp*sy;
