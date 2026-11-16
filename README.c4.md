@@ -54,8 +54,9 @@ Config and saved games are where the game runs, the shareware's beside them.
 - `qg-sum.c`: the main loop, the clock, one `rand` for every build, the flat disks
   (`fopen`), and a timedemo's frames checksummed (`-sum`).
 - `qg-gui.c`, `qg-c4ix.c`, `qg-bare.c`, `qg-host.c`: the platforms. 320x200, as the
-  original ran in VGA: `vid.aspect` says its pixels are not square, and the display
-  shows it 4:3. Frames go out 8-bit, as `GUI_BLIT8`.
+  original ran in VGA, unless Video Options' Resolution chooses another, up to
+  1024x768 (`vid_null.c`); at 320x200 `vid.aspect` says its pixels are not square,
+  and the display shows it 4:3. Frames go out 8-bit, as `GUI_BLIT8`.
 - `qg-snd.c`, in place of `snd_null.c`: sixteen channels of the card, which the host
   mixes, so a sound costs a file to load and a few volumes, not a mix a frame. Two
   are the level's ambience, four the loudest looped sounds the map places, ten
@@ -97,7 +98,9 @@ Config and saved games are where the game runs, the shareware's beside them.
 
 What the compiler and interpreter work has gained since, feature by feature, is in c4's
 [docs/quake-performance.md](https://github.com/andrakis/c4/blob/c4ix_and_toppings/docs/quake-performance.md).
-By 2026-11-06, in the page: 10.4 fps with the MMU and 13.1 without.
+By 2026-11-06, in the page: 10.4 fps with the MMU and 13.1 without. With its
+accelerators (`c4/accel.mjs`, c4's docs/accel.md), by 2026-11-15 at 400 MHz: 26 to
+28 fps with the MMU and 33 to 35 without.
 
 Measured before any inline math (2026-11-05), demo1 at 320x240: 20.74 M VM
 instructions a frame on the bare machine, 21.3 M under C4IX. Under node on helios:
