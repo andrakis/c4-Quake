@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // c4: -home, the person's own paks (qg-sum.c)
 extern int qg_home;
 char **qg_home_dirs (void);
+void qg_no_pak0 (char *dir);
 #endif
 
 #define NUM_SAFE_ARGVS  7
@@ -1750,7 +1751,14 @@ void COM_AddGameDirectory (char *dir)
 			pak = COM_LoadPackFile (pakfile);
 		}
 		if (!pak)
+		{
+#ifdef C4QUAKE
+			// c4: the game's own pak0 not read: say why it may not have been
+			if (i == 0 && strlen (dir) >= 3 && !strcmp (dir + strlen (dir) - 3, GAMENAME))
+				qg_no_pak0 (dir);
+#endif
 			break;
+		}
 		search = Hunk_Alloc (sizeof(searchpath_t));
 		search->pack = pak;
 		search->next = com_searchpaths;

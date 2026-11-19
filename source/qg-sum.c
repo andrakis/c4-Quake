@@ -146,6 +146,17 @@ char **qg_home_dirs (void)
 	return stat ("/home", &st) == 0 ? c4ix : disk;
 }
 
+// No pak0.pak could be read for id1: on c4 a file is read into memory whole
+// (the bare libc's, under C4DOS too, in a buffer that doubles as it fills),
+// so an 18 MB pak0 wants some 48 MB free while it is read, and a machine
+// short of that finds no pak, then no gfx.wad. Say so before Quake stops.
+void qg_no_pak0 (char *dir)
+{
+	printf ("quake: no pak0.pak could be read for %s. It goes beside quake.c4r (id1/pak0.pak\n"
+		"on other systems), and it is read into memory whole: the machine needs 128 MB\n"
+		"for the shareware's, 256 MB for your own paks (the page's Configuration, Memory).\n", dir);
+}
+
 int main(int argc, char **argv)
 {
 	int started, i, timing;
