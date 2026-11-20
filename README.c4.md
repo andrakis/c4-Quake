@@ -33,7 +33,8 @@ that has it (`COM_AddGameDirectory`, `common.c`; `qg_home_dirs`, `qg-sum.c`):
 | | its folder | then |
 |---|---|---|
 | C4IX (it has a `/home`) | `/home/quake/` | `/home/` |
-| the bare machine, C4DOS | `quake/` at drive 0's root (`A:\QUAKE`) | drive 0's root |
+| the bare machine | `quake/` at drive 0's root | drive 0's root |
+| C4DOS (the page's, whose uploads are on B:, its home drive) | `quake/` in the home drive's current directory: `B:\QUAKE` | `B:\` |
 
 The registered `pak0.pak` (v1.06) is the shareware's own, byte for byte, so
 where none was uploaded the game's own is used, and `pak1.pak` alone is enough.
