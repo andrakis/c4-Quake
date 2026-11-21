@@ -12,10 +12,11 @@ inline-math flag for c4lc would be for.
 
 | where | how | platform |
 |---|---|---|
-| C4IX, the whole display | `quake`; the desktop gives way until it ends | `qg-gui.c`, `qg-c4ix.c` |
+| C4IX, the whole display | `quake`, or Go > Games > Quake; the desktop gives way until it ends | `qg-gui.c`, `qg-c4ix.c` |
 | C4IX, a window | `quake -window` in a Terminal; also when a program that does not give way has the display | `qg-gui.c`, `qg-c4ix.c` |
 | C4DOS | `QUAKE` at the prompt, in 128 MB | `qg-gui.c`, `qg-bare.c` |
-| a grin window, under C4DOS | as Doom's | `qg-gui.c`, `qg-bare.c` |
+| grin, under C4DOS | Program Manager's Action Games > Quake, full screen; typed in a DOS Prompt, the same | `qg-gui.c`, `qg-bare.c` |
+| a grin window, under C4DOS | an item of Program Manager's whose Properties say "DOS program, in a window" | `qg-gui.c`, `qg-bare.c` |
 | the bare machine | `quake.c4r` as the machine's image; the page's `?system=quake`, in 128 MB | `qg-gui.c`, `qg-bare.c` |
 
 Keys are Quake's own. The mouse locks to the display at the first click, until
@@ -26,7 +27,8 @@ Esc; it looks (`+mlook`), as players now expect.
 `quake -home` plays the person's own Quake, all four episodes: the registered
 game's `id1/pak1.pak`, with its `pak0.pak`. Add them with the page's **Uploads**
 (c4's libjs/README.md), in the folder `/home/quake` (in `/home` itself they play
-too), then start it: Go > Games > Quake (your files) on C4IX, or the page's
+too), then start it: Go > Games > Quake (your files) on C4IX, Program
+Manager's Full Games (Uploads) > Quake under C4DOS, or the page's
 `?system=quake-full` on the bare machine. Each pak is taken from the first place
 that has it (`COM_AddGameDirectory`, `common.c`; `qg_home_dirs`, `qg-sum.c`):
 
